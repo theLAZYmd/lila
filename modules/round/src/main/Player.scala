@@ -1,11 +1,11 @@
 package lila.round
 
 import chess.format.{ Forsyth, FEN, Uci }
-import chess.{ MoveMetrics, Centis, Status, Color, MoveOrDrop }
+import chess.{ MoveMetrics, Centis, Status, Color, MoveOrDrop, Piece }
 
-import actorApi.round.{ HumanPlay, DrawNo, TakebackNo, ForecastPlay }
+import actorApi.round.{ HumanPlay, DrawNo, TakebackNo, ForecastPlay, BugFinishMessage, BugEventsMessage }
 import akka.actor.ActorRef
-import lila.game.{ Game, Progress, Pov, UciMemo }
+import lila.game.{ Game, Progress, Pov, UciMemo, Event }
 import lila.hub.actorApi.round.MoveEvent
 import scala.concurrent.duration._
 
@@ -31,13 +31,27 @@ private[round] final class Player(
                 if (pov.game.hasAi) uciMemo.add(pov.game, moveOrDrop)
                 notifyMove(moveOrDrop, progress.game)
               } >> progress.game.finished.fold(
-                moveFinish(progress.game, color) dmap { progress.events ::: _ }, {
+                {
+                  progress.game.bugGameId.foreach(bugId =>
+                    round ! BugFinishMessage(Some(color), _ => progress.game.status, bugId))
+                  moveFinish(progress.game, color) dmap {
+                    progress.events ::: _
+                  }
+                }, {
                   if (progress.game.playableByAi) requestFishnet(progress.game, round)
                   if (pov.opponent.isOfferingDraw) round ! DrawNo(pov.player.id)
                   if (pov.player.isProposingTakeback) round ! TakebackNo(pov.player.id)
                   if (pov.game.forecastable) moveOrDrop.left.toOption.foreach { move =>
                     round ! ForecastPlay(move)
                   }
+                  progress.game.bugGameId.foreach(bugId => {
+                    round ! BugEventsMessage(
+                      progress.events,
+                      color,
+                      getCapturePiece(moveOrDrop, progress.origin),
+                      bugId
+                    )
+                  })
                   fuccess(progress.events)
                 }
               ) >>- promiseOption.foreach(_.success(()))
@@ -77,7 +91,7 @@ private[round] final class Player(
 
   private val fishnetLag = MoveMetrics()
 
-  private def applyUci(game: Game, uci: Uci, blur: Boolean, metrics: MoveMetrics): Valid[MoveResult] =
+  private def applyUci(game: Game, uci: Uci, blur: Boolean, metrics: MoveMetrics, bugGameOpt: Option[Game] = None) =
     (uci match {
       case Uci.Move(orig, dest, prom) => game.toChess.apply(orig, dest, prom, metrics) map {
         case (ncg, move) => ncg -> (Left(move): MoveOrDrop)
@@ -105,6 +119,16 @@ private[round] final class Player(
       simulId = game.simulId
     ), 'moveEvent)
   }
+
+  private def getCapturePiece(moveOrDrop: MoveOrDrop, origin: Game): Option[Piece] =
+    for {
+      crazyData <- origin.crazyData
+      capture <- moveOrDrop.fold(move => move.capture, _ => None)
+      pieceOpposite <- origin.toChess.board.pieces.get(capture)
+      piece = pieceOpposite.copy(color = !pieceOpposite.color)
+    } yield {
+      crazyData.promoted(capture).fold(piece.color.pawn, piece)
+    }
 
   private def moveFinish(game: Game, color: Color)(implicit proxy: GameProxy): Fu[Events] = game.status match {
     case Status.Mate => finisher.other(game, _.Mate, game.toChess.situation.winner)

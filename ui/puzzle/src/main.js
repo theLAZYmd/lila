@@ -6,7 +6,14 @@ var m = require('mithril');
 module.exports = function(opts) {
 
   var controller = new ctrl(opts);
-
+  
+  if (opts.bugData){
+    var bugOpts = Object.assign({}, opts);
+    bugOpts.data = opts.bugData;
+    
+    controller.bugController = new ctrl(bugOpts, controller);
+  }
+    
   m.module(opts.element, {
     controller: function() {
       return controller;

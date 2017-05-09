@@ -52,7 +52,7 @@ function makeConfig(ctrl): Config {
       }
     },
     predroppable: {
-      enabled: data.pref.enablePremove && data.game.variant.key === 'crazyhouse',
+      enabled: data.pref.enablePremove && (data.game.variant.key === 'crazyhouse' || data.game.variant.key === 'bughouse'),
       events: {
         set: hooks.onPredrop,
         unset: hooks.onPredrop

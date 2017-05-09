@@ -122,7 +122,8 @@ private[api] final class RoundApi(
       id = pov.game.id,
       pgnMoves = pov.game.pgnMoves,
       variant = pov.game.variant,
-      initialFen = initialFen | pov.game.variant.initialFen
+      initialFen = initialFen | pov.game.variant.initialFen,
+      bugPieceAdds = pov.game.bugPieceAdds
     ))
 
   private def withNote(note: String)(json: JsObject) =

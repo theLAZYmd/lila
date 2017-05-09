@@ -18,16 +18,18 @@ private[lobby] object Biter {
 
   private def join(hook: Hook, uid: String, lobbyUserOption: Option[LobbyUser]): Fu[JoinHook] = for {
     userOption ← lobbyUserOption.map(_.id) ?? UserRepo.byId
+    _ <- hook.joinUser(userOption, uid)
     ownerOption ← hook.userId ?? UserRepo.byId
     creatorColor <- assignCreatorColor(ownerOption, userOption, hook.realColor)
-    game = blame(
+    game1 = blame(
       !creatorColor, userOption,
       blame(creatorColor, ownerOption, makeGame(hook))
     ).start
-    _ ← GameRepo insertDenormalized game
+    _ ← GameRepo insertDenormalized game1
+    game2opt = bugBlameAndAddOpt(creatorColor, hook, game1)
   } yield {
     lila.mon.lobby.hook.join()
-    JoinHook(uid, hook, game, creatorColor)
+    JoinHook(uid, hook, game1, game2opt, creatorColor)
   }
 
   private def join(seek: Seek, lobbyUser: LobbyUser): Fu[JoinSeek] = for {
@@ -56,7 +58,21 @@ private[lobby] object Biter {
       game.updatePlayer(color, _.withUser(user.id, PerfPicker.mainOrDefault(game)(user.perfs)))
     }
 
-  private def makeGame(hook: Hook) = Game.make(
+  private def bugBlameAndAddOpt(color: ChessColor, hook: Hook, otherGame: Game) = hook.variant match {
+    case 11 =>
+      val it = hook.joinedUsers.iterator
+      val id1 = it.next()
+      val id2 = it.next()
+      val blamedGame = blame(
+        color, id2,
+        blame(!color, id1, makeGame(hook, otherGame.bugGameId, Some(otherGame.id)))
+      ).start
+      GameRepo insertDenormalized blamedGame
+      Some(blamedGame)
+    case _ => None
+  }
+
+  private def makeGame(hook: Hook, idOpt: Option[String] = None, bugGameIdOpt: Option[String] = None) = Game.make(
     game = ChessGame(
       board = Board init hook.realVariant,
       clock = hook.clock.toClock.some
@@ -66,7 +82,10 @@ private[lobby] object Biter {
     mode = hook.realMode,
     variant = hook.realVariant,
     source = lila.game.Source.Lobby,
-    pgnImport = None
+    pgnImport = None,
+    daysPerTurn = None,
+    idOpt = idOpt,
+    bugGameIdOpt = bugGameIdOpt
   )
 
   private def makeGame(seek: Seek) = Game.make(

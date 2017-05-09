@@ -4,8 +4,8 @@ import lila.common.PimpedJson._
 import play.api.libs.json._
 
 import chess.Pos
+import chess.{ Centis, PromotableRole, Color, Piece, Situation, Move => ChessMove, Drop => ChessDrop, Clock => ChessClock, Status }
 import chess.variant.Crazyhouse
-import chess.{ Centis, PromotableRole, Pos, Color, Situation, Move => ChessMove, Drop => ChessDrop, Clock => ChessClock, Status }
 import JsonView._
 import lila.chat.{ UserLine, PlayerLine }
 import lila.common.Maths.truncateAt
@@ -178,6 +178,21 @@ object Event {
       "rook" -> Json.arr(rook._1.key, rook._2.key),
       "color" -> color
     )
+  }
+
+  case class AddPieceToPocket(piece: Piece, crazyData: Option[Crazyhouse.Data]) extends Event {
+    def typ = "piece"
+    def data = Json.obj(
+      "pieceClass" -> piece.role.toString.toLowerCase,
+      "color" -> piece.color
+    ).noNull |> withCrazyData(crazyData, None)
+    override def owner = false
+    override def watcher = false
+  }
+
+  case class Buggified(event: Event) extends Event {
+    def typ = "bug" + event.typ
+    def data = event.data
   }
 
   case class RedirectOwner(

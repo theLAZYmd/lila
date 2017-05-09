@@ -6,10 +6,11 @@ import org.joda.time.DateTime
 import scala.concurrent.duration._
 
 import actorApi._, round._
-import chess.{ Centis, Color }
+import chess.{ Centis, Color, Piece, Status }
 import lila.game.{ Game, Pov, Event }
 import lila.hub.actorApi.DeployPost
 import lila.hub.actorApi.map._
+import lila.hub.actorApi.map.Tell
 import lila.hub.actorApi.round.FishnetPlay
 import lila.hub.SequentialActor
 import makeTimeout.large
@@ -61,6 +62,24 @@ private[round] final class Round(
         p.trace.finish()
         lila.mon.round.move.full.count()
       }
+
+    case BugEventsMessage(events: Events, color: Color, pieceOp: Option[Piece], bugId: String) => {
+      fuccess(finisher.roundMap ! Tell(bugId, BugEvents(events, color, pieceOp)))
+    }
+
+    case BugEvents(events: Events, color: Color, pieceOp: Option[Piece]) => handle(!color) { pov =>
+      pov.game.addBugEvents(events, pieceOp) ?? { progress =>
+        proxy.save(progress) inject progress.events
+      }
+    }
+
+    case BugFinishMessage(colorOp: Option[Color], status: (Status.type => Status), bugId: String) => {
+      fuccess(finisher.roundMap ! Tell(bugId, BugFinish(colorOp, status)))
+    }
+
+    case BugFinish(colorOp: Option[Color], status: (Status.type => Status)) => handle { game =>
+      finisher.bug(game, status, colorOp.map(!_))
+    }
 
     case FishnetPlay(uci, currentFen) => handle { game =>
       player.fishnet(game, uci, currentFen, self)

@@ -6,8 +6,10 @@ import chess.{ Status, Color }
 
 import lila.game.actorApi.{ FinishGame, AbortedBy }
 import lila.game.{ GameRepo, Game, Pov }
+import lila.hub.actorApi.map.Tell
 import lila.i18n.I18nKey.{ Select => SelectI18nKey }
 import lila.playban.PlaybanApi
+import lila.round.actorApi.round.BugFinish
 import lila.user.{ User, UserRepo }
 
 private[round] final class Finisher(
@@ -18,33 +20,49 @@ private[round] final class Finisher(
     crosstableApi: lila.game.CrosstableApi,
     bus: lila.common.Bus,
     casualOnly: Boolean,
-    getSocketStatus: Game.ID => Fu[actorApi.SocketStatus]
+    getSocketStatus: Game.ID => Fu[actorApi.SocketStatus],
+    val roundMap: akka.actor.ActorSelection
 ) {
 
-  def abort(pov: Pov)(implicit proxy: GameProxy): Fu[Events] = apply(pov.game, _.Aborted) >>- {
-    getSocketStatus(pov.gameId) foreach { ss =>
-      playban.abort(pov, ss.colorsOnGame)
+  def abort(pov: Pov)(implicit proxy: GameProxy): Fu[Events] = {
+    pov.game.bugGameId.foreach(bgid => roundMap ! Tell(bgid, BugFinish(None, _.Aborted)))
+    apply(pov.game, _.Aborted) >>- {
+      getSocketStatus(pov.gameId) foreach { ss =>
+        playban.abort(pov, ss.colorsOnGame)
+      }
+      bus.publish(AbortedBy(pov), 'abortGame)
     }
-    bus.publish(AbortedBy(pov), 'abortGame)
   }
 
-  def rageQuit(game: Game, winner: Option[Color])(implicit proxy: GameProxy): Fu[Events] =
+  def rageQuit(game: Game, winner: Option[Color])(implicit proxy: GameProxy): Fu[Events] = {
+    game.bugGameId.foreach(roundMap ! Tell(_, BugFinish(winner.map(!_), _.Timeout)))
     apply(game, _.Timeout, winner) >>-
       winner.?? { color => playban.rageQuit(game, !color) }
+  }
 
   def outOfTime(game: Game)(implicit proxy: GameProxy): Fu[Events] = {
     import lila.common.PlayApp
     if (!PlayApp.startedSinceSeconds(60) && (game.movedAt isBefore PlayApp.startedAt)) {
       logger.info(s"Aborting game last played before JVM boot: ${game.id}")
+      game.bugGameId.foreach(roundMap ! Tell(_, BugFinish(None, _.Aborted)))
       other(game, _.Aborted, none)
     }
     else {
       val winner = Some(!game.player.color) filterNot { color =>
         game.toChess.board.variant.insufficientWinningMaterial(game.toChess.situation.board, color)
       }
+      game.bugGameId.foreach(roundMap ! Tell(_, BugFinish(winner, _.Outoftime)))
       apply(game, _.Outoftime, winner) >>-
         winner.?? { color => playban.sittingOrGood(game, !color) }
     }
+  }
+
+  def bug(
+    game: Game,
+    status: Status.type => Status,
+    winner: Option[Color] = None
+  )(implicit proxy: GameProxy): Fu[Events] = {
+    apply(game, status, winner) >>- playban.goodFinish(game)
   }
 
   def other(
@@ -52,8 +70,10 @@ private[round] final class Finisher(
     status: Status.type => Status,
     winner: Option[Color] = None,
     message: Option[SelectI18nKey] = None
-  )(implicit proxy: GameProxy): Fu[Events] =
+  )(implicit proxy: GameProxy): Fu[Events] = {
+    game.bugGameId.foreach(roundMap ! Tell(_, BugFinish(winner, status)))
     apply(game, status, winner, message) >>- playban.other(game, status, winner)
+  }
 
   private def apply(
     game: Game,

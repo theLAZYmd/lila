@@ -39,6 +39,18 @@ module.exports = function(socket, ctrl) {
       o.isDrop = true;
       ctrl.apiMove(o);
     },
+    bugmove: function(o) {
+      if (ctrl.bugController){
+          o.isMove = true;
+          ctrl.bugController.apiMove(o);
+      }
+    },
+    bugdrop: function(o) {
+      if (ctrl.bugController){
+          o.isDrop = true;
+          ctrl.bugController.apiMove(o);
+      }
+    },
     reload: reload,
     redirect: ctrl.setRedirecting,
     clock: function(o) {
@@ -58,6 +70,12 @@ module.exports = function(socket, ctrl) {
       ctrl.chessground.stop();
       ctrl.setLoading(true);
       xhr.reload(ctrl).then(ctrl.reload);
+      if (ctrl.bugController){
+        ctrl.bugController.data.game.winner = winner;
+        ctrl.bugController.chessground.stop();
+        ctrl.bugController.setLoading(true);
+        xhr.reload(ctrl.bugController).then(ctrl.bugController.reload);
+      }
       if (!ctrl.data.player.spectator && ctrl.data.game.turns > 1)
         lichess.sound[winner ? (ctrl.data.player.color === winner ? 'victory' : 'defeat') : 'draw']();
     },

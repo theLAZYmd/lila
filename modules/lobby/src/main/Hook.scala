@@ -9,6 +9,7 @@ import lila.common.PimpedJson._
 import lila.game.PerfPicker
 import lila.rating.RatingRange
 import lila.user.User
+import lila.WithFuture
 
 // realtime chess, volatile
 case class Hook(
@@ -31,6 +32,20 @@ case class Hook(
   val realMode = Mode orDefault mode
 
   val isAuth = user.nonEmpty
+
+  var joinedUsers: List[Option[User]] = List()
+  var joinedSockets: List[String] = List()
+
+  def joinUser(userOpt: Option[User], joinUid: String): Funit = {
+    if (variant == 11 && joinedUsers.length != 2) {
+      if (!joinedSockets.contains(joinUid)) {
+        joinedUsers = userOpt :: joinedUsers
+        joinedSockets = joinUid :: joinedSockets
+      }
+      fufail(s"not enough users to begin")
+    }
+    else funit
+  }
 
   def compatibleWith(h: Hook) =
     isAuth == h.isAuth &&

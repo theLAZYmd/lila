@@ -42,6 +42,7 @@ trait SetupHelper { self: I18nHelper =>
 
   def translatedVariantChoicesWithVariants(implicit ctx: Context) =
     translatedVariantChoices(ctx) :+
+      variantTuple(chess.variant.Bughouse) :+
       variantTuple(chess.variant.Crazyhouse) :+
       variantTuple(chess.variant.Chess960) :+
       variantTuple(chess.variant.KingOfTheHill) :+

@@ -12,6 +12,8 @@ case class Pov(game: Game, color: Color) {
 
   def gameId = game.id
 
+  def bugGameId = game.bugGameId
+
   def opponent = game player !color
 
   def isFirstPlayer = game.firstPlayer.color == color

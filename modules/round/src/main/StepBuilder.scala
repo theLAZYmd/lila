@@ -1,9 +1,8 @@
 package lila.round
 
 import chess.format.Forsyth
-import chess.variant.Variant
+import chess.variant.{ Variant, Bughouse }
 import lila.socket.Step
-
 import play.api.libs.json._
 
 object StepBuilder {
@@ -14,9 +13,10 @@ object StepBuilder {
     id: String,
     pgnMoves: List[String],
     variant: Variant,
-    initialFen: String
+    initialFen: String,
+    bugPieceAdds: Option[List[Bughouse.PieceAdd]] = None
   ): JsArray = {
-    chess.Replay.gameMoveWhileValid(pgnMoves, initialFen, variant) match {
+    chess.Replay.gameMoveWhileValid(pgnMoves, initialFen, variant, bugPieceAdds) match {
       case (init, games, error) =>
         error foreach logChessError(id)
         JsArray {

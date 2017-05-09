@@ -99,17 +99,32 @@ private[lobby] final class Socket(
 
     case RemoveSeek(_) => notifySeeks
 
-    case JoinHook(uid, hook, game, creatorColor) =>
+    case JoinHook(uid, hook, game1, game2opt, creatorColor) =>
       withMember(hook.uid) { member =>
         lila.mon.lobby.hook.joinMobile(member.mobile)()
-        notifyPlayerStart(game, creatorColor)(member)
+        notifyPlayerStart(game1, creatorColor)(member)
       }
       withMember(uid) { member =>
         lila.mon.lobby.hook.joinMobile(member.mobile)()
         if (hook.likePoolFiveO)
           lila.mon.lobby.hook.acceptedLikePoolFiveO(member.mobile)()
-        notifyPlayerStart(game, !creatorColor)(member)
+        notifyPlayerStart(game1, !creatorColor)(member)
       }
+      game2opt.foreach(game2 => {
+        val it = hook.joinedSockets.iterator
+        val uid1 = it.next()
+        val uid2 = it.next()
+        withMember(uid1) { member =>
+          lila.mon.lobby.hook.joinMobile(member.mobile)()
+          notifyPlayerStart(game2, !creatorColor)(member)
+        }
+        withMember(uid2) { member =>
+          lila.mon.lobby.hook.joinMobile(member.mobile)()
+          if (hook.likePoolFiveO)
+            lila.mon.lobby.hook.acceptedLikePoolFiveO(member.mobile)()
+          notifyPlayerStart(game2, creatorColor)(member)
+        }
+      })
 
     case JoinSeek(userId, seek, game, creatorColor) =>
       membersByUserId(seek.user.id) foreach { member =>

@@ -1,3 +1,4 @@
+var m = require('mithril');
 var round = require('./round');
 var game = require('game').game;
 var status = require('game').status;
@@ -20,13 +21,15 @@ var renderUser = require('./view/user');
 var cevalSub = require('./cevalSub');
 var keyboard = require('./keyboard');
 
-module.exports = function(opts, redraw) {
+module.exports = function(opts, redraw, parent) {
 
   this.data = round.merge({}, opts.data).data;
 
   this.userId = opts.userId;
   this.opts = opts;
   this.redraw = redraw;
+
+  if (parent) this.bugController = parent;
 
   this.vm = {
     ply: round.lastPly(this.data),
@@ -55,7 +58,18 @@ module.exports = function(opts, redraw) {
     redraw();
   }.bind(this), 3000);
 
-  this.socket = new socket(opts.socket, this);
+  if (parent){
+    this.socket = { // a dummy socket
+      sendLoading: function(){},
+      moreTime: function(){},
+      send: function(){},
+      berserk: function(){},
+      outoftime: function(){}
+    };
+  }
+  else{
+    this.socket = new socket(opts.socket, this);
+  }
 
   var timerFunction = window.performance ? performance.now.bind(performance) : Date.now;
 
@@ -72,6 +86,9 @@ module.exports = function(opts, redraw) {
 
   var onMove = function(orig, dest, captured) {
     if (captured) {
+      if (this.data.game.variant.key === 'bughouse'){
+          this.bugController.apiBugPiece(captured);
+      }
       if (this.data.game.variant.key === 'atomic') {
         sound.explode();
         atomic.capture(this, dest, captured);
@@ -354,7 +371,17 @@ module.exports = function(opts, redraw) {
     if (this.keyboardMove) this.keyboardMove.update(step);
     if (this.music) this.music.jump(o);
   }.bind(this);
-
+    
+  this.apiBugPiece = function(piece) {
+    var d = this.data;
+    var step = round.plyStep(d, round.lastPly(d));
+    var pocket = step.crazy.pockets[piece.color === 'white' ? 0 : 1];
+    if (pocket[piece.role]) pocket[piece.role] += 1;
+    else pocket[piece.role] = 1;
+    d.crazyhouse = step.crazy; // Thus each step will contain the latest pocket that existed in that position
+    m.redraw();
+  }.bind(this);
+  
   var playPredrop = function() {
     return this.chessground.playPredrop(function(drop) {
       return crazyValid(this.data, drop.role, drop.key);

@@ -1,4 +1,4 @@
-@(pov: Pov, data: play.api.libs.json.JsObject, tour: Option[lila.tournament.MiniStanding], simul: Option[lila.simul.Simul], cross: Option[lila.game.Crosstable], playing: List[Pov], chatOption: Option[lila.chat.Chat.Restricted], bookmarked: Boolean)(implicit ctx: Context)
+@(pov: Pov, data: play.api.libs.json.JsObject, bugData: Option[play.api.libs.json.JsObject], tour: Option[lila.tournament.MiniStanding], simul: Option[lila.simul.Simul], cross: Option[lila.game.Crosstable], playing: List[Pov], chatOption: Option[lila.chat.Chat.Restricted], bookmarked: Boolean)(implicit ctx: Context)
 
 @import pov._
 
@@ -11,6 +11,9 @@ window.customWS = true;
 window.onload = function() {
 LichessRound.boot({
 data: @Html(J.stringify(data)),
+@bugData.map{bd =>
+    bugData: @Html(J.stringify(bd)),
+}
 i18n: @jsI18n(),
 userId: @jsUserId,
 chat: @jsOrNull(chatOption map { c =>

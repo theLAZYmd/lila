@@ -81,7 +81,7 @@ final class Env(
         nbRounds = size
         system.lilaBus.publish(lila.hub.actorApi.round.NbRounds(nbRounds), 'nbRounds)
     }: Receive) orElse actorMapReceive
-  }), name = ActorMapName)
+  }: lila.hub.ActorMap), name = ActorMapName)
 
   private var nbRounds = 0
   def count() = nbRounds
@@ -146,7 +146,7 @@ final class Env(
     notifyApi = notifyApi
   )
 
-  private lazy val finisher = new Finisher(
+  private lazy val finisher: Finisher = new Finisher(
     messenger = messenger,
     perfsUpdater = perfsUpdater,
     crosstableApi = crosstableApi,
@@ -154,7 +154,8 @@ final class Env(
     playban = playban,
     bus = system.lilaBus,
     casualOnly = CasualOnly,
-    getSocketStatus = getSocketStatus
+    getSocketStatus = getSocketStatus,
+    roundMap = hub.actor.roundMap
   )
 
   private lazy val rematcher = new Rematcher(

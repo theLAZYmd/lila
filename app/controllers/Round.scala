@@ -46,7 +46,7 @@ object Round extends LilaController with TheftPrevention {
 
   private def requestAiMove(pov: Pov) = pov.game.playableByAi ?? Env.fishnet.player(pov.game)
 
-  private def renderPlayer(pov: Pov)(implicit ctx: Context): Fu[Result] =
+  private def renderPlayer(pov: Pov, bugPovOp: Option[Pov] = None)(implicit ctx: Context): Fu[Result] =
     negotiate(
       html = pov.game.started.fold(
         Game.preloadUsers(pov.game) >> PreventTheft(pov) {
@@ -58,15 +58,16 @@ object Round extends LilaController with TheftPrevention {
             Env.bookmark.api.exists(pov.game, ctx.me) flatMap {
               case tour ~ simul ~ chatOption ~ crosstable ~ playing ~ bookmarked =>
                 simul foreach Env.simul.api.onPlayerConnection(pov.game, ctx.me)
-                Env.api.roundApi.player(pov, lila.api.Mobile.Api.currentVersion) map { data =>
-                  Ok(html.round.player(pov, data,
-                    tour = tour,
-                    simul = simul,
-                    cross = crosstable,
-                    playing = playing,
-                    chatOption = chatOption,
-                    bookmarked = bookmarked))
-                }
+                bugPovOp.fold(fuccess(None: Option[JsObject]))(Env.api.roundApi.watcher(_, lila.api.Mobile.Api.currentVersion, None).map(Some(_))).flatMap(bugDataOp =>
+                  Env.api.roundApi.player(pov, lila.api.Mobile.Api.currentVersion) map { data =>
+                    Ok(html.round.player(pov, data, bugDataOp,
+                      tour = tour,
+                      simul = simul,
+                      cross = crosstable,
+                      playing = playing,
+                      chatOption = chatOption,
+                      bookmarked = bookmarked))
+                  })
             }
         }.mon(_.http.response.player.website),
         notFound
@@ -84,8 +85,10 @@ object Round extends LilaController with TheftPrevention {
 
   def player(fullId: String) = Open { implicit ctx =>
     OptionFuResult(GameRepo pov fullId) { pov =>
-      env.checkOutoftime(pov.game)
-      renderPlayer(pov)
+      (pov.bugGameId.fold(fuccess(None: Option[Pov]))(bgId => GameRepo.pov(bgId, !pov.color))).flatMap { bugPovOp =>
+        env.checkOutoftime(pov.game)
+        renderPlayer(pov, bugPovOp)
+      }
     }
   }
 

@@ -75,8 +75,9 @@ private[lobby] final class Lobby(
       }
     }
 
-    case msg @ JoinHook(_, hook, game, _) =>
-      onStart(game.id)
+    case msg @ JoinHook(_, hook, game1, game2opt, _) =>
+      onStart(game1.id)
+      game2opt.foreach(g2 => onStart(g2.id))
       socket ! msg
       remove(hook)
 

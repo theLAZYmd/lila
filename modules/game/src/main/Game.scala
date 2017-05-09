@@ -5,8 +5,8 @@ import scala.concurrent.duration._
 import chess.Color.{ White, Black }
 import chess.format.{ Uci, FEN }
 import chess.opening.{ FullOpening, FullOpeningDB }
-import chess.variant.{ Variant, Crazyhouse }
-import chess.{ MoveMetrics, History => ChessHistory, CheckCount, Castles, Board, MoveOrDrop, Pos, Game => ChessGame, Clock, Status, Color, Mode, PositionHash, UnmovedRooks, Centis }
+import chess.variant.{ Variant, Crazyhouse, Bughouse }
+import chess.{ MoveMetrics, History => ChessHistory, CheckCount, Castles, Board, MoveOrDrop, Pos, Game => ChessGame, Clock, Status, Color, Mode, PositionHash, UnmovedRooks, Centis, Piece }
 import org.joda.time.DateTime
 
 import lila.common.Sequence
@@ -34,6 +34,8 @@ case class Game(
     mode: Mode = Mode.default,
     variant: Variant = Variant.default,
     crazyData: Option[Crazyhouse.Data] = None,
+    bugGameId: Option[String] = None,
+    bugPieceAdds: Option[List[Bughouse.PieceAdd]] = None,
     next: Option[String] = None,
     bookmarks: Int = 0,
     createdAt: DateTime = DateTime.now,
@@ -166,7 +168,7 @@ case class Game(
     val pieces = BinaryFormat.piece.read(binaryPieces, variant)
 
     ChessGame(
-      board = Board(pieces, toChessHistory, variant, crazyData),
+      board = Board(pieces, toChessHistory, variant, crazyData, bugPieceAdds),
       player = Color(0 == turns % 2),
       clock = clock,
       turns = turns,
@@ -374,6 +376,24 @@ case class Game(
         })
       ).updatePlayer(color, _.goBerserk)) ++
         List(Event.Clock(newClock), Event.Berserk(color))
+    }
+
+  def addBugEvents(events: List[Event], pieceOp: Option[Piece]) =
+    for {
+      bpa <- bugPieceAdds
+      cd <- crazyData
+    } yield {
+      val buggified = events.map(Event.Buggified(_))
+      val res = pieceOp.fold(
+        Progress(this, this) ++ buggified
+      ) { piece =>
+          val newGame = copy(
+            crazyData = Some(cd.storePiece(piece)),
+            bugPieceAdds = Some(Bughouse.PieceAdd(piece, turns) :: bpa)
+          )
+          Progress(this, newGame) ++ (Event.AddPieceToPocket(piece, newGame.crazyData) :: buggified)
+        }
+      res
     }
 
   def resignable = playable && !abortable
@@ -624,12 +644,14 @@ object Game {
     variant: Variant,
     source: Source,
     pgnImport: Option[PgnImport],
-    daysPerTurn: Option[Int] = None
+    daysPerTurn: Option[Int] = None,
+    idOpt: Option[String] = None,
+    bugGameIdOpt: Option[String] = None
   ): Game = {
     var createdAt = DateTime.now
 
     Game(
-      id = IdGenerator.game,
+      id = idOpt.getOrElse(IdGenerator.game),
       whitePlayer = whitePlayer,
       blackPlayer = blackPlayer,
       binaryPieces =
@@ -646,6 +668,8 @@ object Game {
       mode = mode,
       variant = variant,
       crazyData = game.board.crazyData,
+      bugGameId = (variant == Bughouse) option bugGameIdOpt.getOrElse(IdGenerator.game),
+      bugPieceAdds = (variant == Bughouse) option Nil,
       metadata = Metadata(
         source = source.some,
         pgnImport = pgnImport,
@@ -685,6 +709,8 @@ object Game {
     val analysed = "an"
     val variant = "v"
     val crazyData = "chd"
+    val bugGameId = "bgid"
+    val bugPieceAdds = "bpa"
     val next = "ne"
     val bookmarks = "bm"
     val createdAt = "ca"

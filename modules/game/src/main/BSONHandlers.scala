@@ -1,10 +1,9 @@
 package lila.game
 
-import scala.collection.breakOut
 import org.joda.time.DateTime
 import reactivemongo.bson._
 
-import chess.variant.{ Variant, Crazyhouse }
+import chess.variant.{ Variant, Crazyhouse, Bughouse }
 import chess.{ CheckCount, Color, Clock, White, Black, Status, Mode, UnmovedRooks }
 
 import lila.db.{ BSON, ByteArray }
@@ -30,6 +29,21 @@ object BSONHandlers {
     def write(x: UnmovedRooks): BSONBinary = ByteArrayBSONHandler.write {
       BinaryFormat.unmovedRooks.write(x)
     }
+  }
+
+  private[game] implicit val bugPieceAddsBSONHandler = new BSON[List[Bughouse.PieceAdd]] {
+    import Bughouse.PieceAdd
+
+    def reads(r: BSON.Reader): List[PieceAdd] = {
+      val pc = { r.str("pc").flatMap(chess.Piece.fromChar)(scala.collection.breakOut): List[chess.Piece] }
+      val hm = r.intsD("hm")
+      (pc zip hm).map { case (p, h) => PieceAdd(p, h) }
+    }
+
+    def writes(w: BSON.Writer, o: List[PieceAdd]) = BSONDocument(
+      "pc" -> o.map(_.piece.forsyth).mkString,
+      "hm" -> o.map(_.halfMove)
+    )
   }
 
   private[game] implicit val crazyhouseDataBSONHandler = new BSON[Crazyhouse.Data] {
@@ -97,6 +111,8 @@ object BSONHandlers {
         binaryMoveTimes = r bytesO moveTimes,
         mode = Mode(r boolD rated),
         variant = Variant(r intD variant) | chess.variant.Standard,
+        bugGameId = r strO bugGameId,
+        bugPieceAdds = (realVariant == Bughouse) option r.getsD[Bughouse.PieceAdd](bugPieceAdds),
         next = r strO next,
         bookmarks = r intD bookmarks,
         createdAt = r date createdAt,
@@ -148,6 +164,8 @@ object BSONHandlers {
       rated -> w.boolO(o.mode.rated),
       variant -> o.variant.exotic.option(o.variant.id).map(w.int),
       crazyData -> o.crazyData,
+      bugGameId -> o.bugGameId,
+      bugPieceAdds -> o.bugPieceAdds,
       next -> o.next,
       bookmarks -> w.intO(o.bookmarks),
       createdAt -> w.date(o.createdAt),

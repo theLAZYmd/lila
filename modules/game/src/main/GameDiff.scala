@@ -1,7 +1,7 @@
 package lila.game
 
 import chess.{ Color, White, Black, Clock, CheckCount, UnmovedRooks }
-import chess.variant.Crazyhouse
+import chess.variant.{ Crazyhouse, Bughouse }
 import Game.BSONFields._
 import org.joda.time.DateTime
 import reactivemongo.bson._
@@ -71,8 +71,10 @@ private[game] object GameDiff {
       BSONHandlers.clockBSONWrite(a.createdAt, c)
     })
     dOpt(checkCount, _.checkCount, (o: CheckCount) => o.nonEmpty option { BSONHandlers.checkCountWriter write o })
-    if (a.variant == Crazyhouse)
+    if (a.variant == Crazyhouse || a.variant == Bughouse)
       dOpt(crazyData, _.crazyData, (o: Option[Crazyhouse.Data]) => o map BSONHandlers.crazyhouseDataBSONHandler.write)
+    if (a.variant == Bughouse)
+      dOpt(bugPieceAdds, _.bugPieceAdds, (o: Option[List[Bughouse.PieceAdd]]) => o map BSONHandlers.bugPieceAddsBSONHandler.write)
     for (i ← 0 to 1) {
       import Player.BSONFields._
       val name = s"p$i."
