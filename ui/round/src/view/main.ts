@@ -72,19 +72,46 @@ export function main(ctrl: any): VNode {
     material = util.getMaterialDiff(pieces);
     score = util.getScore(pieces) * (bottomColor === 'white' ? 1 : -1);
   } else material = emptyMaterialDiff;
+
+  var boards = [
+    d.blind ? blindBoard(ctrl) : visualBoard(ctrl),
+    h('div.lichess_ground', [
+      crazyView(ctrl, topColor, 'top') || renderMaterial(material[topColor], d.player.checks, undefined),
+      table.render(ctrl),
+      crazyView(ctrl, bottomColor, 'bottom') || renderMaterial(material[bottomColor], d.opponent.checks, score)
+    ])
+  ];
+
+  if (ctrl.bugController){
+    const bd = ctrl.bugController.data, bc = ctrl.bugController,
+    bugCgState = bc.chessground && bc.chessground.state,    
+    bugTopColor = bd[bc.vm.flip ? 'player' : 'opponent'].color,
+    bugBottomColor = bd[bc.vm.flip ? 'opponent' : 'player'].color;
+    let bugMaterial, bugScore;
+
+    if (d.pref.showCaptured) {
+      var pieces = bugCgState ? bugCgState.pieces : fenRead(round.plyStep(bd, bc.vm.ply).fen);
+      bugMaterial = util.getMaterialDiff(pieces);
+      bugScore = util.getScore(pieces) * (bugBottomColor === 'white' ? 1 : -1);
+    }
+    else bugMaterial = emptyMaterialDiff;
+
+    boards.push(
+      bd.blind ? blindBoard(bc) : visualBoard(bc),
+      h('div.lichess_ground', [
+        crazyView(bc, bugTopColor, 'top') || renderMaterial(bugMaterial[bugTopColor], bd.player.checks, undefined),
+        table.render(bc),
+        crazyView(bc, bugBottomColor, 'bottom') || renderMaterial(bugMaterial[bugBottomColor], bd.opponent.checks, bugScore)
+      ])
+    )
+  }
+
   return h('div.round.cg-512', [
     h('div.lichess_game.variant_' + d.game.variant.key, {
       hook: {
         insert: () => window.lichess.pubsub.emit('content_loaded')()
       }
-    }, [
-      d.blind ? blindBoard(ctrl) : visualBoard(ctrl),
-      h('div.lichess_ground', [
-        crazyView(ctrl, topColor, 'top') || renderMaterial(material[topColor], d.player.checks, undefined),
-        table.render(ctrl),
-        crazyView(ctrl, bottomColor, 'bottom') || renderMaterial(material[bottomColor], d.opponent.checks, score)
-      ])
-    ]),
+    }, boards),
     h('div.underboard', [
       h('div.center', {
         hook: {

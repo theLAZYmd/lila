@@ -1,4 +1,3 @@
-var m = require('mithril');
 var round = require('./round');
 var game = require('game').game;
 var status = require('game').status;
@@ -379,7 +378,7 @@ module.exports = function(opts, redraw, parent) {
     if (pocket[piece.role]) pocket[piece.role] += 1;
     else pocket[piece.role] = 1;
     d.crazyhouse = step.crazy; // Thus each step will contain the latest pocket that existed in that position
-    m.redraw();
+    redraw();
   }.bind(this);
   
   var playPredrop = function() {

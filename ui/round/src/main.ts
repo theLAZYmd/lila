@@ -24,6 +24,13 @@ export function app(opts: any) {
 
   ctrl = new makeCtrl(opts, redraw);
 
+  if (opts.bugData){
+    var bugOpts = (<any>Object).assign({}, opts);
+    bugOpts.data = opts.bugData;
+
+    ctrl.bugController = new makeCtrl(bugOpts, redraw, ctrl);
+  }
+
   const blueprint = view.main(ctrl);
   opts.element.innerHTML = '';
   vnode = patch(opts.element, blueprint);

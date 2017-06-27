@@ -1,5 +1,6 @@
 package lila.game
 
+import scala.collection.breakOut
 import org.joda.time.DateTime
 import reactivemongo.bson._
 
@@ -112,7 +113,6 @@ object BSONHandlers {
         mode = Mode(r boolD rated),
         variant = Variant(r intD variant) | chess.variant.Standard,
         bugGameId = r strO bugGameId,
-        bugPieceAdds = (realVariant == Bughouse) option r.getsD[Bughouse.PieceAdd](bugPieceAdds),
         next = r strO next,
         bookmarks = r intD bookmarks,
         createdAt = r date createdAt,
@@ -131,7 +131,8 @@ object BSONHandlers {
 
       g.copy(
         clock = gameClock,
-        crazyData = (g.variant == Crazyhouse) option r.get[Crazyhouse.Data](crazyData),
+        crazyData = (g.variant == Crazyhouse || g.variant == Bughouse) option r.get[Crazyhouse.Data](crazyData),
+        bugPieceAdds = (g.variant == Bughouse) option r.getsD[Bughouse.PieceAdd](bugPieceAdds),
         clockHistory = for {
         clk <- gameClock
         bw <- r bytesO whiteClockHistory

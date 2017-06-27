@@ -21,7 +21,7 @@ export function merge(old, cfg) {
   if (data.correspondence)
   data.correspondence.showBar = data.pref.clockBar;
 
-  if (['horde', 'crazyhouse'].indexOf(data.game.variant.key) !== -1)
+  if (['horde', 'crazyhouse', 'bughouse'].indexOf(data.game.variant.key) !== -1)
   data.pref.showCaptured = false;
 
   var changes: any = {};

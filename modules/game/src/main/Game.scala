@@ -211,6 +211,7 @@ case class Game(
       positionHashes = history.positionHashes,
       checkCount = history.checkCount,
       crazyData = situation.board.crazyData,
+      bugPieceAdds = situation.board.bugPieceAdds,
       castleLastMoveTime = CastleLastMoveTime(
         castles = history.castles,
         lastMove = history.lastMove.map(_.origDest),
@@ -655,8 +656,8 @@ object Game {
       whitePlayer = whitePlayer,
       blackPlayer = blackPlayer,
       binaryPieces =
-      if (game.isStandardInit) BinaryFormat.piece.standard
-      else BinaryFormat.piece write game.board.pieces,
+        if (game.isStandardInit) BinaryFormat.piece.standard
+        else BinaryFormat.piece write game.board.pieces,
       binaryPgn = ByteArray.empty,
       status = Status.Created,
       turns = game.turns,
@@ -669,7 +670,7 @@ object Game {
       variant = variant,
       crazyData = game.board.crazyData,
       bugGameId = (variant == Bughouse) option bugGameIdOpt.getOrElse(IdGenerator.game),
-      bugPieceAdds = (variant == Bughouse) option Nil,
+      bugPieceAdds = game.board.bugPieceAdds,
       metadata = Metadata(
         source = source.some,
         pgnImport = pgnImport,
