@@ -1,14 +1,12 @@
 package lila.game
 
 import scala.concurrent.duration._
-
-import chess.Color.{ White, Black }
-import chess.format.{ Uci, FEN }
+import chess.Color.{ Black, White }
+import chess.format.{ FEN, Uci }
 import chess.opening.{ FullOpening, FullOpeningDB }
-import chess.variant.{ Variant, Crazyhouse, Bughouse }
-import chess.{ MoveMetrics, History => ChessHistory, CheckCount, Castles, Board, MoveOrDrop, Pos, Game => ChessGame, Clock, Status, Color, Mode, PositionHash, UnmovedRooks, Centis, Piece }
+import chess.variant.{ Bughouse, Crazyhouse, Variant }
+import chess.{ Board, Castles, Centis, CheckCount, Clock, Color, Mode, MoveMetrics, MoveOrDrop, Piece, Pos, PositionHash, Status, Timestamp, UnmovedRooks, Game => ChessGame, History => ChessHistory }
 import org.joda.time.DateTime
-
 import lila.common.Sequence
 import lila.db.ByteArray
 import lila.rating.PerfType
@@ -96,7 +94,7 @@ case class Game(
   def isMandatory = isTournament || isSimul
   def nonMandatory = !isMandatory
 
-  def hasChat = !isTournament && !isSimul && nonAi
+  def hasChat = (!isTournament || variant == Bughouse) && !isSimul && nonAi
 
   // we can't rely on the clock,
   // because if moretime was given,
@@ -173,7 +171,7 @@ case class Game(
       clock = clock,
       turns = turns,
       startedAtTurn = startedAtTurn,
-      pgnMoves = pgnMoves
+      pgnMoves = pgnMoves.toVector
     )
   }
 
@@ -206,7 +204,7 @@ case class Game(
       whitePlayer = copyPlayer(whitePlayer),
       blackPlayer = copyPlayer(blackPlayer),
       binaryPieces = BinaryFormat.piece write game.board.pieces,
-      binaryPgn = BinaryFormat.pgn write game.pgnMoves,
+      binaryPgn = BinaryFormat.pgn write game.pgnMoves.toList,
       turns = game.turns,
       positionHashes = history.positionHashes,
       checkCount = history.checkCount,
@@ -385,7 +383,7 @@ case class Game(
       cd <- crazyData
     } yield {
       val buggified = events.map(Event.Buggified(_))
-      val res = pieceOp.fold(
+      pieceOp.fold(
         Progress(this, this) ++ buggified
       ) { piece =>
           val newGame = copy(
@@ -394,7 +392,18 @@ case class Game(
           )
           Progress(this, newGame) ++ (Event.AddPieceToPocket(piece, newGame.crazyData) :: buggified)
         }
-      res
+    }
+
+  def startClockWithTimestamp(timestamp: Timestamp) =
+    clock.ifTrue(playedTurns == 0) map { c =>
+      val newClock = c.startWithTimeStamp(timestamp)
+      Progress(this, copy(
+        clock = Some(newClock) /*,
+        clockHistory = clockHistory.map(history => {
+          if (history(color).isEmpty) history
+          else history.reset(color).record(color, newClock)
+        })*/
+      )) ++ List(Event.Clock(newClock))
     }
 
   def resignable = playable && !abortable
@@ -471,7 +480,7 @@ case class Game(
     if (isCorrespondence) outoftimeCorrespondence else outoftimeClock(withGrace)
 
   private def outoftimeClock(withGrace: Boolean): Boolean = clock ?? { c =>
-    started && playable && (bothPlayersHaveMoved || isSimul) && {
+    started && playable && (bothPlayersHaveMoved || isSimul || variant == Bughouse) && {
       (!c.isRunning && !c.isInit) || c.outOfTime(turnColor, withGrace)
     }
   }
@@ -550,6 +559,8 @@ case class Game(
   def withSimulId(id: String) = copy(metadata = metadata.copy(simulId = id.some))
 
   def withId(newId: String) = copy(id = newId)
+
+  def withBugId(newBugIdOpt: Option[String]) = copy(bugGameId = newBugIdOpt)
 
   def source = metadata.source
 

@@ -1,12 +1,13 @@
 package lila.round
 
-import chess.format.{ Forsyth, FEN, Uci }
-import chess.{ MoveMetrics, Centis, Status, Color, MoveOrDrop, Piece }
-
-import actorApi.round.{ HumanPlay, DrawNo, TakebackNo, ForecastPlay, BugFinishMessage, BugEventsMessage }
+import chess.format.{ FEN, Forsyth, Uci }
+import chess.{ Centis, Color, MoveMetrics, MoveOrDrop, Piece, Status }
+import actorApi.round._
 import akka.actor.ActorRef
-import lila.game.{ Game, Progress, Pov, UciMemo, Event }
+import lila.game.{ Event, Game, Pov, Progress, UciMemo }
+import lila.hub.actorApi.map.Tell
 import lila.hub.actorApi.round.MoveEvent
+
 import scala.concurrent.duration._
 
 private[round] final class Player(
@@ -31,12 +32,8 @@ private[round] final class Player(
                 if (pov.game.hasAi) uciMemo.add(pov.game, moveOrDrop)
                 notifyMove(moveOrDrop, progress.game)
               } >> progress.game.finished.fold(
-                {
-                  progress.game.bugGameId.foreach(bugId =>
-                    round ! BugFinishMessage(Some(color), _ => progress.game.status, bugId))
-                  moveFinish(progress.game, color) dmap {
-                    progress.events ::: _
-                  }
+                moveFinish(progress.game, color) dmap {
+                  progress.events ::: _
                 }, {
                   if (progress.game.playableByAi) requestFishnet(progress.game, round)
                   if (pov.opponent.isOfferingDraw) round ! DrawNo(pov.player.id)
@@ -45,12 +42,11 @@ private[round] final class Player(
                     round ! ForecastPlay(move)
                   }
                   progress.game.bugGameId.foreach(bugId => {
-                    round ! BugEventsMessage(
-                      progress.events,
-                      color,
-                      getCapturePiece(moveOrDrop, progress.origin),
-                      bugId
-                    )
+                    finisher.roundMap ! Tell(bugId, BugEvents(progress.events, color, getCapturePiece(moveOrDrop, progress.origin)))
+                    if (progress.game.turns == 1) for {
+                      c <- progress.game.clock
+                      timer <- c.timer
+                    } (finisher.roundMap ! Tell(bugId, BugClockStart(timer)))
                   })
                   fuccess(progress.events)
                 }
@@ -91,7 +87,7 @@ private[round] final class Player(
 
   private val fishnetLag = MoveMetrics()
 
-  private def applyUci(game: Game, uci: Uci, blur: Boolean, metrics: MoveMetrics, bugGameOpt: Option[Game] = None) =
+  private def applyUci(game: Game, uci: Uci, blur: Boolean, metrics: MoveMetrics) =
     (uci match {
       case Uci.Move(orig, dest, prom) => game.toChess.apply(orig, dest, prom, metrics) map {
         case (ncg, move) => ncg -> (Left(move): MoveOrDrop)

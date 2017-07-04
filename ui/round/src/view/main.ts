@@ -104,8 +104,10 @@ export function main(ctrl: any): VNode {
         crazyView(bc, bugBottomColor, 'bottom') || renderMaterial(bugMaterial[bugBottomColor], bd.opponent.checks, bugScore)
       ])
     )
+  
+  $('body > .content').css("margin-left", 'calc(50% - ' + '830px' + ')');
   }
-
+    
   return h('div.round.cg-512', [
     h('div.lichess_game.variant_' + d.game.variant.key, {
       hook: {

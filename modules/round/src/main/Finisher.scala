@@ -1,11 +1,9 @@
 package lila.round
 
 import scala.concurrent.duration._
-
-import chess.{ Status, Color }
-
-import lila.game.actorApi.{ FinishGame, AbortedBy }
-import lila.game.{ GameRepo, Game, Pov }
+import chess.{ Color, Status }
+import lila.game.actorApi.{ AbortedBy, FinishGame }
+import lila.game.{ Game, GameRepo, Pov }
 import lila.hub.actorApi.map.Tell
 import lila.i18n.I18nKey.{ Select => SelectI18nKey }
 import lila.playban.PlaybanApi
@@ -62,7 +60,7 @@ private[round] final class Finisher(
     status: Status.type => Status,
     winner: Option[Color] = None
   )(implicit proxy: GameProxy): Fu[Events] = {
-    apply(game, status, winner) >>- playban.goodFinish(game)
+    apply(game, status, winner) >>- playban.other(game, status, winner)
   }
 
   def other(
@@ -71,7 +69,7 @@ private[round] final class Finisher(
     winner: Option[Color] = None,
     message: Option[SelectI18nKey] = None
   )(implicit proxy: GameProxy): Fu[Events] = {
-    game.bugGameId.foreach(roundMap ! Tell(_, BugFinish(winner, status)))
+    game.bugGameId.foreach(bgId => if (status(Status) != Status.NoStart) roundMap ! Tell(bgId, BugFinish(winner, status)))
     apply(game, status, winner, message) >>- playban.other(game, status, winner)
   }
 

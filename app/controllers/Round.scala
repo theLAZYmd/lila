@@ -151,16 +151,18 @@ object Round extends LilaController with TheftPrevention {
         }
         case None => {
           env.checkOutoftime(pov.game)
-          watch(pov)
+          (pov.bugGameId.fold(fuccess(None: Option[Pov]))(bgId => GameRepo.pov(bgId, !pov.color))).flatMap { bugPovOp =>
+            watch(pov, None, bugPovOp)
+          }
         }
       }
       case None => Challenge showId gameId
     }
   }
 
-  private[controllers] def watch(pov: Pov, userTv: Option[UserModel] = None)(implicit ctx: Context): Fu[Result] =
+  private[controllers] def watch(pov: Pov, userTv: Option[UserModel] = None, bugPovOp: Option[Pov] = None)(implicit ctx: Context): Fu[Result] =
     playablePovForReq(pov.game) match {
-      case Some(player) if userTv.isEmpty => renderPlayer(pov withColor player.color)
+      case Some(player) if userTv.isEmpty => renderPlayer(pov withColor player.color, bugPovOp.map(_ withColor !player.color))
       case _ => Game.preloadUsers(pov.game) >> negotiate(
         html = {
           if (getBool("sudo") && isGranted(_.SuperAdmin)) Redirect(routes.Round.player(pov.fullId)).fuccess

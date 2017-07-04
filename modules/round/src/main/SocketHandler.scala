@@ -3,17 +3,16 @@ package lila.round
 import scala.concurrent.duration._
 import scala.concurrent.Promise
 import scala.util.Try
-
 import akka.actor._
 import akka.pattern.ask
 import chess.format.Uci
-import chess.{ Centis, MoveMetrics, Color }
+import chess.{ Centis, Color, MoveMetrics }
 import play.api.libs.json.{ JsObject, Json }
-
-import actorApi._, round._
+import actorApi._
+import round._
 import lila.common.PimpedJson._
 import lila.common.IpAddress
-import lila.game.{ Pov, PovRef, GameRepo }
+import lila.game.{ GameRepo, Pov, PovRef }
 import lila.hub.actorApi.map._
 import lila.hub.actorApi.round.Berserk
 import lila.socket.actorApi.{ Connected => _, _ }
@@ -38,7 +37,8 @@ private[round] final class SocketHandler(
     uid: Uid,
     ref: PovRef,
     member: Member,
-    me: Option[User]
+    me: Option[User],
+    bugId: Option[String]
   ): Handler.Controller = {
 
     def send(msg: Any) { roundMap ! Tell(gameId, msg) }
@@ -47,7 +47,10 @@ private[round] final class SocketHandler(
 
     member.playerIdOption.fold[Handler.Controller](({
       case ("p", o) => ping(o)
-      case ("talk", o) => o str "d" foreach { messenger.watcher(gameId, member, _) }
+      case ("talk", o) => o str "d" foreach { text =>
+        bugId.foreach(bgId => messenger.watcher(bgId, member, text))
+        messenger.watcher(gameId, member, text)
+      }
       case ("outoftime", _) => send(QuietFlag) // mobile app BC
       case ("flag", o) => clientFlag(o, none) foreach send
     }: Handler.Controller) orElse evalCacheHandler(member, me) orElse lila.chat.Socket.in(
@@ -91,7 +94,10 @@ private[round] final class SocketHandler(
         case ("outoftime", _) => send(QuietFlag) // mobile app BC
         case ("flag", o) => clientFlag(o, playerId.some) foreach send
         case ("bye2", _) => socket ! Bye(ref.color)
-        case ("talk", o) => o str "d" foreach { messenger.owner(gameId, member, _) }
+        case ("talk", o) => o str "d" foreach { text =>
+          bugId.foreach(bgId => messenger.owner(bgId, member, text))
+          messenger.owner(gameId, member, text)
+        }
         case ("hold", o) => for {
           d ← o obj "d"
           mean ← d int "mean"
@@ -159,7 +165,8 @@ private[round] final class SocketHandler(
           // register to the tournament standing channel when playing a tournament game
           if (playerId.isDefined && pov.game.isTournament)
             hub.channel.tournamentStanding ! lila.socket.Channel.Sub(member)
-          (controller(pov.gameId, socket, uid, pov.ref, member, user), enum, member)
+          val bugId = pov.bugGameId
+          (controller(pov.gameId, socket, uid, pov.ref, member, user, bugId), enum, member)
       }
     }
   }

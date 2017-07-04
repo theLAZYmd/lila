@@ -89,7 +89,7 @@ case class ImportData(pgn: String, analyse: Option[String]) {
           source = Source.Import,
           pgnImport = PgnImport.make(user = user, date = date, pgn = pgn).some
         ).copy(
-          binaryPgn = BinaryFormat.pgn write replay.state.pgnMoves
+          binaryPgn = BinaryFormat.pgn write replay.state.pgnMoves.toList
         ).start
 
         Preprocessed(dbGame, replay, result, initialFen, parsed)

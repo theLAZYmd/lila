@@ -73,7 +73,7 @@ object DataForm {
   }
   val positionDefault = StartingPosition.initial.eco
 
-  val validVariants = List(Standard, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Crazyhouse)
+  val validVariants = List(Standard, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Crazyhouse, Bughouse)
 
   val validVariantIds = validVariants.map(_.id).toSet
 }

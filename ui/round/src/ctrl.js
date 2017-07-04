@@ -331,6 +331,8 @@ module.exports = function(opts, redraw, parent) {
     if (o.clock) {
       (this.clock || this.correspondenceClock).update(o.clock.white, o.clock.black,
         playing && activeColor ? 0 : o.clock.lag);
+      if (this.data.game.variant.key === 'bughouse' && !this.bugController.boardRequiresClockRunning())
+        this.bugController.clock.setLastUpdate(this.clock.getLastUpdate());
     }
     d.game.threefold = !!o.threefold;
     var step = {
@@ -375,12 +377,13 @@ module.exports = function(opts, redraw, parent) {
     var d = this.data;
     var step = round.plyStep(d, round.lastPly(d));
     var pocket = step.crazy.pockets[piece.color === 'white' ? 0 : 1];
-    if (pocket[piece.role]) pocket[piece.role] += 1;
-    else pocket[piece.role] = 1;
+    var role = (piece.promoted) ? 'pawn' : piece.role;
+    if (pocket[role]) pocket[role] += 1;
+    else pocket[role] = 1;
     d.crazyhouse = step.crazy; // Thus each step will contain the latest pocket that existed in that position
     redraw();
   }.bind(this);
-  
+    
   var playPredrop = function() {
     return this.chessground.playPredrop(function(drop) {
       return crazyValid(this.data, drop.role, drop.key);
@@ -449,15 +452,21 @@ module.exports = function(opts, redraw, parent) {
     soundColor: (this.data.simul || this.data.player.spectator || !this.data.pref.clockSound) ? null : this.data.player.color
   }) : false;
 
-  this.isClockRunning = function() {
+  this.boardRequiresClockRunning = function() {
+    var unclockedTurns = (this.data.game.variant.key === 'bughouse') ? 1 : 2;
+      
     return this.data.clock && game.playable(this.data) && !this.vm.justMoved &&
-    ((this.data.game.turns - this.data.game.startedAtTurn) > 1 || this.data.clock.running);
+    ((this.data.game.turns - this.data.game.startedAtTurn) > unclockedTurns - 1 || this.data.clock.running);
+  }
+    
+  this.isClockRunning = function() {
+    return this.boardRequiresClockRunning() || (this.bugController && this.bugController.boardRequiresClockRunning());
   }.bind(this);
-
+  
   var clockTick = function() {
     if (this.isClockRunning()) this.clock.tick(this, this.data.game.player);
   }.bind(this);
-
+  
   var makeCorrespondenceClock = function() {
     if (this.data.correspondence && !this.correspondenceClock)
     this.correspondenceClock = new correspondenceClockCtrl(

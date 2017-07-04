@@ -25,7 +25,7 @@ final class AutoPairing(
     onStart: String => Unit
 ) {
 
-  def apply(tour: Tournament, pairing: Pairing, usersMap: Map[User.ID, User]): Fu[Game] = {
+  def apply(tour: Tournament, pairing: Pairing, usersMap: Map[User.ID, User], bugPairingOpt: Option[Pairing] = None): Fu[Game] = {
     val user1 = usersMap get pairing.user1 err s"Missing pairing user $pairing"
     val user2 = usersMap get pairing.user2 err s"Missing pairing user $pairing"
     val game1 = Game.make(
@@ -54,9 +54,10 @@ final class AutoPairing(
       .updatePlayer(Color.Black, _.withUser(user2.id, PerfPicker.mainOrDefault(game1)(user2.perfs)))
       .withTournamentId(tour.id)
       .withId(pairing.gameId)
+      .withBugId(bugPairingOpt.map(_.gameId))
       .start
     (GameRepo insertDenormalized game2) >>-
-      scheduleIdleCheck(PovRef(game2.id, game2.turnColor), SecondsToDoFirstMove.secondsToMoveFor(tour), true) >>-
+      scheduleIdleCheck(PovRef(game2.id, game2.turnColor), SecondsToDoFirstMove.secondsToMoveFor(tour), (tour.variant != chess.variant.Bughouse)) >>-
       onStart(game2.id) inject
       game2
   }
@@ -76,7 +77,7 @@ final class AutoPairing(
               false
             )
         }
-        else roundMap ! Tell(pov.gameId, NoStartColor(pov.color))
+        else if (pov.game.variant != chess.variant.Bughouse || !pov.game.clock.fold(false)(_.isRunning)) roundMap ! Tell(pov.gameId, NoStartColor(pov.color))
       }
     }
   }

@@ -73,13 +73,43 @@ final class TournamentApi(
             lila.mon.tournament.pairing.giveup()
             funit
           case pairings => UserRepo.idsMap(pairings.flatMap(_.users)) flatMap { users =>
-            pairings.map { pairing =>
-              PairingRepo.insert(pairing) >>
-                autoPairing(tour, pairing, users) addEffect { game =>
-                  sendTo(tour.id, StartGame(game))
+            oldTour.variant match {
+              case chess.variant.Bughouse => {
+                scala.util.Random.shuffle(pairings).grouped(2).toList.flatMap {
+                  doublePairing =>
+                    if (doublePairing.length == 2) {
+                      val pairing1 = doublePairing.head;
+                      val pairing2 = doublePairing.last;
+                      List(
+                        PairingRepo.insert(pairing1) >>
+                          autoPairing(tour, pairing1, users, Some(pairing2)) addEffect {
+                            game =>
+                              sendTo(tour.id, StartGame(game))
+                          },
+                        PairingRepo.insert(pairing2) >>
+                          autoPairing(tour, pairing2, users, Some(pairing1)) addEffect {
+                            game =>
+                              sendTo(tour.id, StartGame(game))
+                          }
+                      )
+                    }
+                    else List(funit, funit)
+                }.sequenceFu >> featureOneOf(tour, pairings, ranking) >>- {
+                  lila.mon.tournament.pairing.create(pairings.size)
                 }
-            }.sequenceFu >> featureOneOf(tour, pairings, ranking) >>- {
-              lila.mon.tournament.pairing.create(pairings.size)
+              }
+              case _ => {
+                pairings.map {
+                  pairing =>
+                    PairingRepo.insert(pairing) >>
+                      autoPairing(tour, pairing, users) addEffect {
+                        game =>
+                          sendTo(tour.id, StartGame(game))
+                      }
+                }.sequenceFu >> featureOneOf(tour, pairings, ranking) >>- {
+                  lila.mon.tournament.pairing.create(pairings.size)
+                }
+              }
             }
           }
         } >>- {

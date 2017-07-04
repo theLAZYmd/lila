@@ -32,6 +32,14 @@ module.exports = function(data, opts) {
 
   update(data.white, data.black);
 
+  function setLastUpdate(lastUpdate){
+    times.lastUpdate = lastUpdate;
+  }
+    
+  function getLastUpdate(){
+    return times.lastUpdate;
+  }
+    
   function tick(ctrl, color) {
     var now = Date.now();
     if (now > times.lastUpdate) {
@@ -64,6 +72,8 @@ module.exports = function(data, opts) {
     data: data,
     timePercent: timePercent,
     update: update,
+    setLastUpdate: setLastUpdate,
+    getLastUpdate: getLastUpdate,
     tick: tick,
     millisOf: millisOf,
     emergMs: emergMs,

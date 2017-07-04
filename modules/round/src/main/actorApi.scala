@@ -98,7 +98,7 @@ case class SetGame(game: Option[lila.game.Game])
 
 package round {
 
-  import chess.{ Piece, Status }
+  import chess.{ Piece, Status, Timestamp }
 
   case class HumanPlay(
       playerId: String,
@@ -138,10 +138,9 @@ package round {
   case class Cheat(color: Color)
   case class HoldAlert(playerId: String, mean: Int, sd: Int, ip: IpAddress)
   case class GoBerserk(color: Color)
-  case class BugEventsMessage(events: Events, color: Color, pieceOp: Option[Piece], bugId: String)
   case class BugEvents(events: Events, color: Color, pieceOp: Option[Piece])
-  case class BugFinishMessage(color: Option[Color], status: (Status.type => Status), bugId: String)
   case class BugFinish(color: Option[Color], status: (Status.type => Status))
+  case class BugClockStart(timer: Timestamp)
 }
 
 private[round] case object GetNbRounds
