@@ -16,6 +16,7 @@ case class Perfs(
     horde: Perf,
     racingKings: Perf,
     crazyhouse: Perf,
+    bughouse: Perf,
     ultraBullet: Perf,
     bullet: Perf,
     blitz: Perf,
@@ -34,6 +35,7 @@ case class Perfs(
     "horde" -> horde,
     "racingKings" -> racingKings,
     "crazyhouse" -> crazyhouse,
+    "bughouse" -> bughouse,
     "ultraBullet" -> ultraBullet,
     "bullet" -> bullet,
     "blitz" -> blitz,
@@ -95,6 +97,7 @@ case class Perfs(
     "horde" -> horde,
     "racingKings" -> racingKings,
     "crazyhouse" -> crazyhouse,
+    "bughouse" -> bughouse,
     "ultraBullet" -> ultraBullet,
     "bullet" -> bullet,
     "blitz" -> blitz,
@@ -124,6 +127,7 @@ case class Perfs(
     case PerfType.Horde => horde
     case PerfType.RacingKings => racingKings
     case PerfType.Crazyhouse => crazyhouse
+    case PerfType.Bughouse => bughouse
     case PerfType.Puzzle => puzzle
   }
 
@@ -163,7 +167,7 @@ case object Perfs {
 
   val default = {
     val p = Perf.default
-    Perfs(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p)
+    Perfs(p, p, p, p, p, p, p, p, p, p, p, p, p, p, p, p)
   }
 
   def variantLens(variant: chess.variant.Variant): Option[Perfs => Perf] = variant match {
@@ -176,6 +180,7 @@ case object Perfs {
     case chess.variant.Horde => Some(_.horde)
     case chess.variant.RacingKings => Some(_.racingKings)
     case chess.variant.Crazyhouse => Some(_.crazyhouse)
+    case chess.variant.Bughouse => Some(_.bughouse)
     case _ => none
   }
 
@@ -203,6 +208,7 @@ case object Perfs {
         horde = perf("horde"),
         racingKings = perf("racingKings"),
         crazyhouse = perf("crazyhouse"),
+        bughouse = perf("bughouse"),
         ultraBullet = perf("ultraBullet"),
         bullet = perf("bullet"),
         blitz = perf("blitz"),
@@ -224,6 +230,7 @@ case object Perfs {
       "horde" -> notNew(o.horde),
       "racingKings" -> notNew(o.racingKings),
       "crazyhouse" -> notNew(o.crazyhouse),
+      "bughouse" -> notNew(o.bughouse),
       "ultraBullet" -> notNew(o.ultraBullet),
       "bullet" -> notNew(o.bullet),
       "blitz" -> notNew(o.blitz),
@@ -239,6 +246,7 @@ case object Perfs {
     blitz: List[User.LightPerf],
     classical: List[User.LightPerf],
     crazyhouse: List[User.LightPerf],
+    bughouse: List[User.LightPerf],
     chess960: List[User.LightPerf],
     kingOfTheHill: List[User.LightPerf],
     threeCheck: List[User.LightPerf],

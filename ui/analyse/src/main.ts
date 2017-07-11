@@ -13,6 +13,13 @@ import { Chessground } from 'chessground';
 export function mithril(opts: AnalyseOpts) {
   const controller: AnalyseController = new ctrl(opts);
 
+  if (opts.bugData){
+    var bugOpts = (<any>Object).assign({}, opts);
+    bugOpts.data = opts.bugData;
+    
+    controller.bugController = new ctrl(bugOpts, controller);
+  }
+    
   m.module<AnalyseController>(opts.element, {
     controller: function() {
       return controller;

@@ -114,7 +114,8 @@ private[api] final class RoundApi(
       analysis = analysis,
       initialFen = initialFen | pov.game.variant.initialFen,
       withFlags = withFlags,
-      clocks = withFlags.clocks ?? pov.game.bothClockStates
+      clocks = withFlags.clocks ?? pov.game.bothClockStates,
+      bugPieceAdds = pov.game.bugPieceAdds
     )))
 
   private def withSteps(pov: Pov, initialFen: Option[String])(obj: JsObject) =

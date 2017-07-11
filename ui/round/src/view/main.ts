@@ -95,7 +95,7 @@ export function main(ctrl: any): VNode {
       bugScore = util.getScore(pieces) * (bugBottomColor === 'white' ? 1 : -1);
     }
     else bugMaterial = emptyMaterialDiff;
-
+    
     boards.push(
       bd.blind ? blindBoard(bc) : visualBoard(bc),
       h('div.lichess_ground', [
@@ -105,7 +105,7 @@ export function main(ctrl: any): VNode {
       ])
     )
   
-  $('body > .content').css("margin-left", 'calc(50% - ' + '830px' + ')');
+    $('body > .content').css("margin-left", 'calc(50% - ' + '830px' + ')');
   }
     
   return h('div.round.cg-512', [

@@ -82,7 +82,7 @@ module.exports = function(opts, redraw, parent) {
       this.sendNewPiece(role, key, meta.predrop);
     } else this.jump(this.vm.ply);
   }.bind(this);
-
+  
   var onMove = function(orig, dest, captured) {
     if (captured) {
       if (this.data.game.variant.key === 'bughouse'){

@@ -24,20 +24,24 @@ private[lobby] final class Lobby(
   def receive = {
 
     case msg @ AddHook(hook) => {
-      lila.mon.lobby.hook.create()
-      HookRepo byUid hook.uid foreach remove
-      hook.sid ?? { sid => HookRepo bySid sid foreach remove }
-      (!hook.compatibleWithPools).??(findCompatible(hook)) foreach {
-        case Some(h) => self ! BiteHook(h.id, hook.uid, hook.user)
-        case None => self ! SaveHook(msg)
+      if (hook.variant == chess.variant.Bughouse.id) {
+        lila.mon.lobby.hook.create()
+        HookRepo byUid hook.uid foreach remove
+        hook.sid ?? { sid => HookRepo bySid sid foreach remove }
+        (!hook.compatibleWithPools).??(findCompatible(hook)) foreach {
+          case Some(h) => self ! BiteHook(h.id, hook.uid, hook.user)
+          case None => self ! SaveHook(msg)
+        }
       }
     }
 
     case msg @ AddSeek(seek) =>
-      lila.mon.lobby.seek.create()
-      findCompatible(seek) foreach {
-        case Some(s) => self ! BiteSeek(s.id, seek.user)
-        case None => self ! SaveSeek(msg)
+      if (seek.variant == chess.variant.Bughouse.id) {
+        lila.mon.lobby.seek.create()
+        findCompatible(seek) foreach {
+          case Some(s) => self ! BiteSeek(s.id, seek.user)
+          case None => self ! SaveSeek(msg)
+        }
       }
 
     case SaveHook(msg) =>

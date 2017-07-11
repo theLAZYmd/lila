@@ -37,7 +37,7 @@ case class Hook(
   var joinedSockets: List[String] = List()
 
   def joinUser(userOpt: Option[User], joinUid: String): Funit = {
-    if (variant == 11 && joinedUsers.length != 2) {
+    if (variant == chess.variant.Bughouse.id && joinedUsers.length != 2) {
       if (!joinedSockets.contains(joinUid)) {
         joinedUsers = userOpt :: joinedUsers
         joinedSockets = joinUid :: joinedSockets

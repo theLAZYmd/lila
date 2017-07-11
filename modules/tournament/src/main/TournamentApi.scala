@@ -40,20 +40,25 @@ final class TournamentApi(
 ) {
 
   def createTournament(setup: TournamentSetup, me: User): Fu[Tournament] = {
-    val tour = Tournament.make(
-      by = Right(me),
-      clock = setup.clockConfig,
-      minutes = setup.minutes,
-      waitMinutes = setup.waitMinutes,
-      mode = setup.realMode,
-      `private` = setup.isPrivate,
-      password = setup.password.ifTrue(setup.isPrivate),
-      system = System.Arena,
-      variant = setup.realVariant,
-      position = StartingPosition.byEco(setup.position).ifTrue(setup.realVariant.standard) | StartingPosition.initial
-    )
-    logger.info(s"Create $tour")
-    TournamentRepo.insert(tour) >>- join(tour.id, me, tour.password) inject tour
+    setup.realVariant match {
+      case chess.variant.Bughouse =>
+        val tour = Tournament.make(
+          by = Right(me),
+          clock = setup.clockConfig,
+          minutes = setup.minutes,
+          waitMinutes = setup.waitMinutes,
+          mode = setup.realMode,
+          `private` = setup.isPrivate,
+          password = setup.password.ifTrue(setup.isPrivate),
+          system = System.Arena,
+          variant = setup.realVariant,
+          position = StartingPosition.byEco(setup.position).ifTrue(setup.realVariant.standard) | StartingPosition.initial
+        )
+        logger.info(s"Create $tour")
+        TournamentRepo.insert(tour) >>- join(tour.id, me, tour.password) inject tour
+      case _ =>
+        fufail(s"Bughouse is only variant allowed")
+    }
   }
 
   private[tournament] def createScheduled(schedule: Schedule): Funit =

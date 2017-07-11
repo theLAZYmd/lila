@@ -1,12 +1,12 @@
 package controllers
 
 import play.api.mvc._
-
 import lila.api.Context
 import lila.app._
 import lila.common.HTTPRequest
-import lila.game.{ Pov, GameRepo, PgnDump }
+import lila.game.{ GameRepo, PgnDump, Pov }
 import lila.round.JsonView.WithFlags
+import play.api.libs.json.JsObject
 import views._
 
 object Analyse extends LilaController {
@@ -27,7 +27,7 @@ object Analyse extends LilaController {
     }
   }
 
-  def replay(pov: Pov, userTv: Option[lila.user.User])(implicit ctx: Context) =
+  def replay(pov: Pov, userTv: Option[lila.user.User], bugPovOp: Option[Pov] = None)(implicit ctx: Context) =
     if (HTTPRequest isBot ctx.req) replayBot(pov)
     else GameRepo initialFen pov.game.id flatMap { initialFen =>
       Game.preloadUsers(pov.game) >> RedirectAtFen(pov, initialFen) {
@@ -37,33 +37,61 @@ object Analyse extends LilaController {
           Round.getWatcherChat(pov.game) zip
           Env.game.crosstableApi(pov.game) zip
           Env.bookmark.api.exists(pov.game, ctx.me) zip
-          Env.api.pgnDump(pov.game, initialFen, PgnDump.WithFlags(clocks = false)) flatMap {
-            case analysis ~ analysisInProgress ~ simul ~ chat ~ crosstable ~ bookmarked ~ pgn =>
-              Env.api.roundApi.review(pov, lila.api.Mobile.Api.currentVersion,
-                tv = userTv.map { u => lila.round.OnUserTv(u.id) },
-                analysis,
-                initialFenO = initialFen.some,
-                withFlags = WithFlags(
-                  movetimes = true,
-                  clocks = true,
-                  division = true,
-                  opening = true
-                )) map { data =>
-                  Ok(html.analyse.replay(
-                    pov,
-                    data,
-                    initialFen,
-                    Env.analyse.annotator(pgn, analysis, pov.game.opening, pov.game.winnerColor, pov.game.status, pov.game.clock).toString,
-                    analysis,
-                    analysisInProgress,
-                    simul,
-                    crosstable,
-                    userTv,
-                    chat,
-                    bookmarked = bookmarked
-                  ))
+          Env.api.pgnDump(pov.game, initialFen, PgnDump.WithFlags(clocks = false)) zip
+          bugPovOp.fold(fuccess(None: Option[JsObject]))(
+            bugPov =>
+              (
+                (env.analyser get bugPov.game.id) flatMap
+                //Env.fishnet.api.prioritaryAnalysisInProgress(bugPov.game.id) zip
+                //(bugPov.game.simulId ?? Env.simul.repo.find) zip
+                //Round.getWatcherChat(bugPov.game) zip
+                //Env.game.crosstableApi(bugPov.game) zip
+                //Env.bookmark.api.exists(bugPov.game, ctx.me) zip
+                //Env.api.pgnDump(bugPov.game, initialFen, PgnDump.WithFlags(clocks = false)) flatMap
+                {
+                  case analysis /* ~ analysisInProgress ~ simul ~ chat ~ crosstable ~ bookmarked ~ pgn*/ =>
+                    Env.api.roundApi.review(bugPov, lila.api.Mobile.Api.currentVersion,
+                      tv = userTv.map { u => lila.round.OnUserTv(u.id) },
+                      analysis,
+                      initialFenO = initialFen.some,
+                      withFlags = WithFlags(
+                        movetimes = true,
+                        clocks = true,
+                        division = true,
+                        opening = true
+                      ))
                 }
-          }
+              ).map(Some(_))
+          ) flatMap
+            {
+              case analysis ~ analysisInProgress ~ simul ~ chat ~ crosstable ~ bookmarked ~ pgn ~ bugDataOp =>
+
+                Env.api.roundApi.review(pov, lila.api.Mobile.Api.currentVersion,
+                  tv = userTv.map { u => lila.round.OnUserTv(u.id) },
+                  analysis,
+                  initialFenO = initialFen.some,
+                  withFlags = WithFlags(
+                    movetimes = true,
+                    clocks = true,
+                    division = true,
+                    opening = true
+                  )) map { data =>
+                    Ok(html.analyse.replay(
+                      pov,
+                      data,
+                      initialFen,
+                      Env.analyse.annotator(pgn, analysis, pov.game.opening, pov.game.winnerColor, pov.game.status, pov.game.clock).toString,
+                      analysis,
+                      analysisInProgress,
+                      simul,
+                      crosstable,
+                      userTv,
+                      chat,
+                      bookmarked = bookmarked,
+                      bugData = bugDataOp
+                    ))
+                  }
+            }
       }
     }
 
