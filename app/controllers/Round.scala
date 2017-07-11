@@ -166,7 +166,7 @@ object Round extends LilaController with TheftPrevention {
       case _ => Game.preloadUsers(pov.game) >> negotiate(
         html = {
           if (getBool("sudo") && isGranted(_.SuperAdmin)) Redirect(routes.Round.player(pov.fullId)).fuccess
-          else if (pov.game.replayable) Analyse.replay(pov, userTv = userTv)
+          else if (pov.game.replayable) Analyse.replay(pov, userTv = userTv, bugPovOp = bugPovOp)
           else if (HTTPRequest.isHuman(ctx.req))
             myTour(pov.game.tournamentId, false) zip
               (pov.game.simulId ?? Env.simul.repo.find) zip
@@ -177,10 +177,13 @@ object Round extends LilaController with TheftPrevention {
                 lila.api.Mobile.Api.currentVersion,
                 tv = userTv.map { u => lila.round.OnUserTv(u.id) }
               ) zip
-                Env.bookmark.api.exists(pov.game, ctx.me) map {
-                  case tour ~ simul ~ chat ~ crosstable ~ data ~ bookmarked =>
-                    Ok(html.round.watcher(pov, data, tour, simul, crosstable, userTv = userTv, chatOption = chat, bookmarked = bookmarked))
-                }
+                bugPovOp.fold(fuccess(None: Option[JsObject]))(
+                  Env.api.roundApi.watcher(_, lila.api.Mobile.Api.currentVersion, None).map(Some(_))
+                ) zip
+                  Env.bookmark.api.exists(pov.game, ctx.me) map {
+                    case tour ~ simul ~ chat ~ crosstable ~ data ~ bugDataOp ~ bookmarked =>
+                      Ok(html.round.watcher(pov, data, tour, simul, crosstable, userTv = userTv, chatOption = chat, bookmarked = bookmarked, bugData = bugDataOp))
+                  }
           else for { // web crawlers don't need the full thing
             initialFen <- GameRepo.initialFen(pov.game.id)
             pgn <- Env.api.pgnDump(pov.game, initialFen, PgnDump.WithFlags(clocks = false))

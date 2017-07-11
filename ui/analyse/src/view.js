@@ -263,6 +263,49 @@ module.exports = function(ctrl) {
   var concealOf = makeConcealOf(ctrl);
   var showCevalPvs = !(ctrl.retro && ctrl.retro.isSolving()) && !ctrl.practice;
   var menuIsOpen = ctrl.actionMenu.open;
+  var boards = [
+    ctrl.data.blind ? blindBoard(ctrl) : visualBoard(ctrl),
+    m('div.lichess_ground', [
+      menuIsOpen ? null : renderClocks(ctrl),
+      menuIsOpen ? null : crazyView.pocket(ctrl, ctrl.topColor(), 'top'),
+      menuIsOpen ? actionMenu(ctrl) : [
+        cevalView.renderCeval(ctrl),
+        showCevalPvs ? cevalView.renderPvs(ctrl) : null,
+        renderAnalyse(ctrl, concealOf),
+        forkView(ctrl, concealOf),
+        retroView(ctrl) || practiceView(ctrl) || explorerView(ctrl)
+      ],
+      menuIsOpen ? null : crazyView.pocket(ctrl, ctrl.bottomColor(), 'bottom'),
+      buttons(ctrl)
+    ])
+  ];
+    
+  if (ctrl.bugController){
+    var bd = ctrl.bugController.data;
+    var bc = ctrl.bugController;
+    var bConcealOf = makeConcealOf(bc);
+    var bMenuIsOpen = bc.actionMenu.open;
+    var bShowCevalPvs = !(bc.retro && bc.retro.isSolving()) && !bc.practice;
+    boards.push(
+        bd.blind ? blindBoard(bc) : visualBoard(bc),
+        m('div.lichess_ground', [
+          bMenuIsOpen ? null : renderClocks(bc),
+          bMenuIsOpen ? null : crazyView.pocket(bc, bc.topColor(), 'top'),
+          bMenuIsOpen ? actionMenu(bc) : [
+            cevalView.renderCeval(bc),
+            bShowCevalPvs ? cevalView.renderPvs(bc) : null,
+            renderAnalyse(bc, bConcealOf),
+            forkView(bc, bConcealOf),
+            retroView(bc) || practiceView(bc) || explorerView(bc)
+        ],
+        bMenuIsOpen ? null : crazyView.pocket(bc, bc.bottomColor(), 'bottom'),
+        buttons(bc)
+      ])
+    )
+      
+    $('body > .content').css("margin-left", 'calc(50% - ' + '900px' + ')');
+  }
+    
   return [
     m('div', {
       config: function(el, isUpdate) {
@@ -279,22 +322,7 @@ module.exports = function(ctrl) {
           if (isUpdate) return;
           lichess.pubsub.emit('content_loaded')();
         }
-      }, [
-        ctrl.data.blind ? blindBoard(ctrl) : visualBoard(ctrl),
-        m('div.lichess_ground', [
-          menuIsOpen ? null : renderClocks(ctrl),
-          menuIsOpen ? null : crazyView.pocket(ctrl, ctrl.topColor(), 'top'),
-          menuIsOpen ? actionMenu(ctrl) : [
-            cevalView.renderCeval(ctrl),
-            showCevalPvs ? cevalView.renderPvs(ctrl) : null,
-            renderAnalyse(ctrl, concealOf),
-            forkView(ctrl, concealOf),
-            retroView(ctrl) || practiceView(ctrl) || explorerView(ctrl)
-          ],
-          menuIsOpen ? null : crazyView.pocket(ctrl, ctrl.bottomColor(), 'bottom'),
-          buttons(ctrl)
-        ])
-      ])
+      }, boards)
     ]),
     ctrl.embed ? null : m('div', {
       class: 'underboard' + (ctrl.vm.showComputer() ? '' : ' no_computer')

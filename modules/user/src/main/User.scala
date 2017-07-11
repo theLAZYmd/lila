@@ -89,7 +89,7 @@ case class User(
     } take 4
 
   private val firstRow = List(PerfType.Bullet, PerfType.Blitz, PerfType.Classical, PerfType.Correspondence)
-  private val secondRow = List(PerfType.UltraBullet, PerfType.Crazyhouse, PerfType.Chess960, PerfType.KingOfTheHill, PerfType.ThreeCheck, PerfType.Antichess, PerfType.Atomic, PerfType.Horde, PerfType.RacingKings)
+  private val secondRow = List(PerfType.UltraBullet, PerfType.Crazyhouse, PerfType.Bughouse, PerfType.Chess960, PerfType.KingOfTheHill, PerfType.ThreeCheck, PerfType.Antichess, PerfType.Atomic, PerfType.Horde, PerfType.RacingKings)
 
   def best8Perfs: List[PerfType] =
     best4Of(firstRow) ::: best4Of(secondRow)

@@ -129,6 +129,14 @@ object PerfType {
     iconChar = ''
   )
 
+  case object Bughouse extends PerfType(
+    19,
+    key = "bughouse",
+    name = chess.variant.Bughouse.name,
+    title = "Bughouse variant",
+    iconChar = ''
+  )
+
   case object Puzzle extends PerfType(
     20,
     key = "puzzle",
@@ -137,7 +145,7 @@ object PerfType {
     iconChar = '-'
   )
 
-  val all: List[PerfType] = List(UltraBullet, Bullet, Blitz, Classical, Correspondence, Standard, Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Puzzle)
+  val all: List[PerfType] = List(UltraBullet, Bullet, Blitz, Classical, Correspondence, Standard, Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Bughouse, Puzzle)
   val byKey = all map { p => (p.key, p) } toMap
   val byId = all map { p => (p.id, p) } toMap
 
@@ -152,10 +160,10 @@ object PerfType {
 
   def id2key(id: Perf.ID): Option[Perf.Key] = byId get id map (_.key)
 
-  val nonPuzzle: List[PerfType] = List(UltraBullet, Bullet, Blitz, Classical, Correspondence, Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings)
+  val nonPuzzle: List[PerfType] = List(UltraBullet, Bullet, Blitz, Classical, Correspondence, Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Bughouse)
   val nonGame: List[PerfType] = List(Puzzle)
-  val leaderboardable: List[PerfType] = List(Bullet, Blitz, Classical, UltraBullet, Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings)
-  val variants: List[PerfType] = List(Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings)
+  val leaderboardable: List[PerfType] = List(Bullet, Blitz, Classical, UltraBullet, Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Bughouse)
+  val variants: List[PerfType] = List(Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings, Bughouse)
   val standard: List[PerfType] = List(Bullet, Blitz, Classical, Correspondence)
 
   def isGame(pt: PerfType) = !nonGame.contains(pt)
@@ -173,6 +181,7 @@ object PerfType {
     case Atomic => chess.variant.Atomic
     case Horde => chess.variant.Horde
     case RacingKings => chess.variant.RacingKings
+    case Bughouse => chess.variant.Bughouse
     case _ => chess.variant.Standard
   }
 
@@ -185,6 +194,7 @@ object PerfType {
     case chess.variant.Atomic => Atomic.some
     case chess.variant.Horde => Horde.some
     case chess.variant.RacingKings => RacingKings.some
+    case chess.variant.Bughouse => Bughouse.some
     case _ => none
   }
 

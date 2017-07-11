@@ -42,10 +42,11 @@ object TreeBuilder {
     analysis: Option[Analysis],
     initialFen: String,
     withFlags: WithFlags,
-    clocks: Option[Vector[Centis]]
+    clocks: Option[Vector[Centis]],
+    bugPieceAdds: Option[List[chess.variant.Bughouse.PieceAdd]] = None
   ): Root = {
     val withClocks = clocks ifTrue withFlags.clocks
-    chess.Replay.gameMoveWhileValid(pgnMoves, initialFen, variant) match {
+    chess.Replay.gameMoveWhileValid(pgnMoves, initialFen, variant, bugPieceAdds) match {
       case (init, games, error) =>
         error foreach logChessError(id)
         val openingOf: OpeningOf =
@@ -94,7 +95,7 @@ object TreeBuilder {
             games.lift(index - 1).map {
               case (fromGame, _) =>
                 val fromFen = Forsyth >> fromGame
-                withAnalysisChild(id, branch, variant, fromFen, openingOf)(adv.info)
+                withAnalysisChild(id, branch, variant, bugPieceAdds, fromFen, openingOf)(adv.info)
             }
           } getOrElse branch
         }
@@ -107,7 +108,7 @@ object TreeBuilder {
     }
   }
 
-  private def withAnalysisChild(id: String, root: Branch, variant: Variant, fromFen: String, openingOf: OpeningOf)(info: Info): Branch = {
+  private def withAnalysisChild(id: String, root: Branch, variant: Variant, bugPieceAdds: Option[List[chess.variant.Bughouse.PieceAdd]], fromFen: String, openingOf: OpeningOf)(info: Info): Branch = {
     def makeBranch(index: Int, g: chess.Game, m: Uci.WithSan) = {
       val fen = Forsyth >> g
       Branch(

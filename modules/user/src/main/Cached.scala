@@ -39,12 +39,14 @@ final class Cached(
     horde <- top10Perf(PerfType.Horde.id)
     racingKings <- top10Perf(PerfType.RacingKings.id)
     crazyhouse <- top10Perf(PerfType.Crazyhouse.id)
+    bughouse <- top10Perf(PerfType.Bughouse.id)
   } yield Perfs.Leaderboards(
     ultraBullet = ultraBullet,
     bullet = bullet,
     blitz = blitz,
     classical = classical,
     crazyhouse = crazyhouse,
+    bughouse = bughouse,
     chess960 = chess960,
     kingOfTheHill = kingOfTheHill,
     threeCheck = threeCheck,

@@ -27,26 +27,40 @@ var nodeFinder = require('./nodeFinder');
 var acplUncache = require('./acpl').uncache;
 var m = require('mithril');
 
-module.exports = function(opts) {
+module.exports = function(opts, parent) {
 
   this.opts = opts;
   this.userId = opts.userId;
   this.embed = opts.embed;
 
+  if (parent) this.bugController = parent;
+    
   var initialize = function(data, merge) {
     this.data = data;
     if (!data.game.moveCentis) this.data.game.moveCentis = [];
     this.synthetic = util.synthetic(data);
     this.ongoing = !this.synthetic && game.playable(data);
-
+    
     var prevTree = merge && this.tree.root;
     this.tree = tree.build(tree.ops.reconstruct(data.treeParts));
     if (prevTree) this.tree.merge(prevTree);
-
+    
     this.actionMenu = new ActionMenuController();
     this.autoplay = new autoplay(this);
     if (this.socket) this.socket.clearCache();
-    else this.socket = new makeSocket(opts.socketSend, this);
+    else {
+      if (parent){
+        this.socket = { // a dummy socket
+          sendLoading: function(){},
+          moreTime: function(){},
+          send: function(){},
+          berserk: function(){},
+          outoftime: function(){},
+          sendAnaDests: function(){}
+        };
+      }
+      else this.socket = new makeSocket(opts.socketSend, this);
+    }
     this.explorer = explorerCtrl(this, opts.explorer, this.explorer ? this.explorer.allowed() : !this.embed);
     this.gamePath = (this.synthetic || this.ongoing) ? null :
       tree.path.fromNodeList(tree.ops.mainlineNodeList(this.tree.root));

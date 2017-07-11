@@ -1,4 +1,4 @@
-@(pov: Pov, data: play.api.libs.json.JsObject, initialFen: Option[String], pgn: String, analysis: Option[lila.analyse.Analysis], analysisInProgress: Option[lila.fishnet.Work.InProgress], simul: Option[lila.simul.Simul], cross: Option[lila.game.Crosstable], userTv: Option[User], chatOption: Option[lila.chat.UserChat.Mine], bookmarked: Boolean)(implicit ctx: Context)
+@(pov: Pov, data: play.api.libs.json.JsObject, initialFen: Option[String], pgn: String, analysis: Option[lila.analyse.Analysis], analysisInProgress: Option[lila.fishnet.Work.InProgress], simul: Option[lila.simul.Simul], cross: Option[lila.game.Crosstable], userTv: Option[User], chatOption: Option[lila.chat.UserChat.Mine], bookmarked: Boolean, bugData: Option[play.api.libs.json.JsObject] = None)(implicit ctx: Context)
 
 @import pov._
 
@@ -14,6 +14,9 @@
 lichess = lichess || {};
 lichess.analyse = {
 data: @Html(J.stringify(data)),
+@bugData.map{bd =>
+  bugData: @Html(J.stringify(bd)),
+}
 i18n: @jsI18n(),
 userId: @jsUserId,
 chat: @jsOrNull(chatOption map { c =>

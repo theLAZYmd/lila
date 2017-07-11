@@ -38,11 +38,13 @@ export interface AnalyseController {
   embed: boolean;
   ongoing: boolean;
   chessground: ChessgroundApi;
+  bugController: AnalyseController;
 }
 
 export interface AnalyseOpts {
   element: Element;
   sideElement: Element;
+  bugData: Element;
 }
 
 export interface Study {
