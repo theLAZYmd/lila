@@ -29,7 +29,8 @@ module.exports = function(opts, redraw, parent) {
   this.redraw = redraw;
 
   if (parent) this.bugController = parent;
-
+  this.parent = parent;
+    
   this.vm = {
     ply: round.lastPly(this.data),
     firstSeconds: true,
@@ -112,6 +113,93 @@ module.exports = function(opts, redraw, parent) {
     sound.move();
   }.bind(this);
 
+  this.actualSendMove = function(type, action, meta) {
+    meta = meta === undefined ? {} : meta
+    var socketOpts = {
+      ackable: true
+    }
+    if (meta.premove) {
+      socketOpts.millis = 0;
+    } else if (this.vm.lastMoveMillis !== null) {
+      socketOpts.millis = timerFunction() - this.vm.lastMoveMillis;
+      if (socketOpts.millis < 3) {
+        // instant move, no premove? might be fishy
+        $.post('/jslog/' + this.data.game.id + this.data.player.id + '?n=instamove:' + socketOpts.millis);
+        delete socketOpts.millis;
+      }
+    }
+    this.socket.send(type, action, socketOpts);
+
+    this.vm.justDropped = meta.justDropped;
+    this.vm.justCaptured = meta.justCaptured;
+    this.vm.preDrop = null;
+    this.vm.justMoved = true;
+    redraw();
+  }
+
+  this.sendMove = function(orig, dest, prom, meta) {
+    var move = {
+      u: orig + dest
+    };
+    if (prom) move.u += (prom === 'knight' ? 'n' : prom[0]);
+    if (blur.get()) move.b = 1;
+    this.resign(false);
+    if (this.data.pref.submitMove && !meta.premove) {
+      this.vm.moveToSubmit = move;
+      redraw();
+    } else {
+      this.actualSendMove('move', move, {
+        justCaptured: meta.captured,
+        premove: meta.premove
+      })
+    };
+
+  }.bind(this);
+    
+  this.requestPiece = function(role){
+    this.socket.send('requestPiece', { role: role, color: this.data.player.color}, { ackable: true });
+  }
+  
+  this.forbidPiece = function(role){
+    this.socket.send('forbidPiece', { role: role, color: this.data.player.color}, {ackable: true});
+  }
+  
+  this.applyRequestPiece = function(role){
+    var jq = $("div.lichess_ground:last-child > .pocket.is2d > ."+role+"."+this.data.player.color);
+    var htmlElm = jq[0];
+    
+    jq.addClass('blink');
+    'webkitAnimationEnd mozAnimationEnd oAnimationEnd oanimationend animationend'.split(' ').forEach(function(event){
+        htmlElm.addEventListener(
+          event,
+          (e) => {
+            $(e.currentTarget).removeClass('blink');
+          }
+        );
+    });
+    var short = role.charAt(0);
+    if (short === 'k') short = 'n';
+    sound.custom(short+'good')();
+  }
+  
+  this.applyForbidPiece = function(role){
+    var jq = $("div.lichess_ground:last-child > .pocket.is2d > ."+role+"."+((this.data.player.color === 'white') ? 'black' : 'white'));
+    var htmlElm = jq[0];
+      
+    jq.addClass('blink');
+    'webkitAnimationEnd mozAnimationEnd oAnimationEnd oanimationend animationend'.split(' ').forEach(function(event){
+        htmlElm.addEventListener(
+          event,
+          (e) => {
+            $(e.currentTarget).removeClass('blink');
+          }
+        );
+    });
+    var short = role.charAt(0);
+    if (short === 'k') short = 'n';
+    sound.custom(short+'bad')();
+  }
+  
   this.makeCgHooks = function() {
     return {
       onUserMove: onUserMove,
@@ -372,7 +460,7 @@ module.exports = function(opts, redraw, parent) {
     if (this.keyboardMove) this.keyboardMove.update(step);
     if (this.music) this.music.jump(o);
   }.bind(this);
-    
+  
   this.apiBugPiece = function(piece) {
     var d = this.data;
     var step = round.plyStep(d, round.lastPly(d));

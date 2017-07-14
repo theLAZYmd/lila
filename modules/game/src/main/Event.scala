@@ -195,6 +195,26 @@ object Event {
     def data = event.data
   }
 
+  case class PieceRequest(role: chess.Role, color: Color) extends Event {
+    def typ = "pieceRequest"
+    def data = Json.obj(
+      "pieceClass" -> role.toString.toLowerCase
+    )
+    override def owner = true
+    override def watcher = false
+    override def only = Some(!color)
+  }
+
+  case class PieceForbid(role: chess.Role, color: Color) extends Event {
+    def typ = "pieceForbid"
+    def data = Json.obj(
+      "pieceClass" -> role.toString.toLowerCase
+    )
+    override def owner = true
+    override def watcher = false
+    override def only = Some(!color)
+  }
+
   case class RedirectOwner(
       color: Color,
       id: String,
@@ -223,6 +243,14 @@ object Event {
     def data = lila.chat.JsonView(line)
     override def owner = true
     override def troll = false
+  }
+
+  case class PlayerOppositeColorMessage(line: PlayerLine) extends Event {
+    def typ = "message"
+    def data = lila.chat.JsonView(line)
+    override def owner = true
+    override def troll = false
+    override def only = Some(!line.color)
   }
 
   case class UserMessage(line: UserLine, w: Boolean) extends Event {

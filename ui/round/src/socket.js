@@ -51,6 +51,16 @@ module.exports = function(socket, ctrl) {
           ctrl.bugController.apiMove(o);
       }
     },
+    pieceRequest: function(o) {
+      if (ctrl.bugController){
+        ctrl.bugController.applyRequestPiece(o.pieceClass);
+      }
+    },
+    pieceForbid: function(o) {
+      if (ctrl.bugController){
+        ctrl.bugController.applyForbidPiece(o.pieceClass);
+      }
+    },
     reload: reload,
     redirect: ctrl.setRedirecting,
     clock: function(o) {

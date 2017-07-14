@@ -8,3 +8,4 @@ export const move = throttled('move');
 export const capture = throttled('capture');
 export const check = throttled('check');
 export const explode = throttled('explode');
+export const custom = (sound: string) => throttled(sound);

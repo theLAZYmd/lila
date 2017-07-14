@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 import scala.concurrent.duration._
 import actorApi._
 import round._
-import chess.{ Centis, Color, Piece, Status, Timestamp }
+import chess.{ Centis, Color, Piece, Role, Status, Timestamp }
 import lila.game.{ Event, Game, Pov }
 import lila.hub.actorApi.DeployPost
 import lila.hub.actorApi.map._
@@ -78,6 +78,14 @@ private[round] final class Round(
       game.startClockWithTimestamp(timer) ?? { progress =>
         proxy.save(progress) inject progress.events
       }
+    }
+
+    case PieceRequest(role: Role, color: Color) => handle(!color) { pov =>
+      fuccess(List(Event.PieceRequest(role, color), Event.PlayerOppositeColorMessage(lila.chat.PlayerLine(color, "Partner requests " + role.name))))
+    }
+
+    case PieceForbid(role: Role, color: Color) => handle(!color) { pov =>
+      fuccess(List(Event.PieceForbid(role, color), Event.PlayerOppositeColorMessage(lila.chat.PlayerLine(color, "Partner forbids " + role.name))))
     }
 
     case FishnetPlay(uci, currentFen) => handle { game =>
