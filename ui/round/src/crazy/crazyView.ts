@@ -23,8 +23,8 @@ export default function pocket(ctrl, color, position) {
     hook: {
       insert: vnode => {
         eventNames.forEach(name => {
-          (vnode.elm as HTMLElement).addEventListener(name, e => {
-            if (position === (ctrl.vm.flip ? 'top' : 'bottom')) drag(ctrl, e);
+          (vnode.elm as HTMLElement).addEventListener(name, (e: any) => {
+            if (!e.shiftKey && position === (ctrl.vm.flip ? 'top' : 'bottom')) drag(ctrl, e);
           })
         });
       }
@@ -46,10 +46,16 @@ export default function pocket(ctrl, color, position) {
         insert: vnode => {
           if (ctrl.bugController && !ctrl.parent){
             var htmlElm = (vnode.elm as HTMLElement);
-            htmlElm.addEventListener('dblclick', (e) => {
-              (ctrl.data.player.color === color) ? ctrl.requestPiece(role) : ctrl.forbidPiece(role);
-              $(e.currentTarget).addClass('blink');
-            });
+              htmlElm.addEventListener('dblclick', (e) => {
+                (ctrl.data.player.color === color) ? ctrl.requestPiece(role) : ctrl.forbidPiece(role);
+                $(e.currentTarget).addClass('blink');
+              });
+              htmlElm.addEventListener('click', (e: any) => {
+                if (e.shiftKey){
+                  (ctrl.data.player.color === color) ? ctrl.requestPiece(role) : ctrl.forbidPiece(role);
+                  $(e.currentTarget).addClass('blink');
+                }
+              });
           'webkitAnimationEnd mozAnimationEnd oAnimationEnd oanimationend animationend'.split(' ').forEach(function(event){
                 htmlElm.addEventListener(
                   event,
