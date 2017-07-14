@@ -105,11 +105,19 @@ private[round] final class Round(
     }
 
     case GoBerserk(color) => handle(color) { pov =>
-      pov.game.goBerserk(color) ?? { progress =>
-        messenger.system(pov.game, (_.untranslated(
-          s"${pov.color.name.capitalize} is going berserk!"
-        )))
-        proxy.save(progress) >> proxy.invalidating(_ goBerserk pov) inject progress.events
+      pov.game.variant match {
+        case chess.variant.Bughouse =>
+          fuccess(List())
+        case _ =>
+          pov.game.goBerserk(color) ?? {
+            progress =>
+              messenger.system(pov.game, (_.untranslated(
+                s"${
+                  pov.color.name.capitalize
+                } is going berserk!"
+              )))
+              proxy.save(progress) >> proxy.invalidating(_ goBerserk pov) inject progress.events
+          }
       }
     }
 
@@ -163,7 +171,12 @@ private[round] final class Round(
 
     case DrawYes(playerRef) => handle(playerRef)(drawer.yes)
     case DrawNo(playerRef) => handle(playerRef)(drawer.no)
-    case DrawClaim(playerId) => handle(playerId)(drawer.claim)
+    case DrawClaim(playerId) => handle(playerId) { pov =>
+      pov.game.variant match {
+        case chess.variant.Bughouse => fuccess(List())
+        case _ => drawer.claim(pov)
+      }
+    }
     case DrawForce => handle(drawer force _)
     case Cheat(color) => handle { game =>
       (game.playable && !game.imported) ?? {
@@ -172,10 +185,15 @@ private[round] final class Round(
     }
 
     case Threefold => proxy withGame { game =>
-      drawer autoThreefold game map {
-        _ foreach { pov =>
-          self ! DrawClaim(pov.player.id)
-        }
+      game.variant match {
+        case chess.variant.Bughouse =>
+          fuccess(List())
+        case _ =>
+          drawer autoThreefold game map {
+            _ foreach { pov =>
+              self ! DrawClaim(pov.player.id)
+            }
+          }
       }
     }
 

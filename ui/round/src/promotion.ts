@@ -105,7 +105,7 @@ function renderPromotion(ctrl, dest, pieces, color, orientation) {
 };
 
 export function view(ctrl) {
-  if (!promoting) return;
+  if (ctrl.parent || !promoting) return;
   var pieces = ['queen', 'knight', 'rook', 'bishop'];
   if (ctrl.data.game.variant.key === 'antichess') pieces.push('king');
 

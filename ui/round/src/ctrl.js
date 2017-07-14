@@ -75,7 +75,7 @@ module.exports = function(opts, redraw, parent) {
 
   var onUserMove = function(orig, dest, meta) {
     lichess.ab && (!this.keyboardMove || !this.keyboardMove.usedSan) && lichess.ab(this, meta);
-    if (!promotion.start(this, orig, dest, meta)) this.sendMove(orig, dest, false, meta);
+    if (!this.parent && !promotion.start(this, orig, dest, meta)) this.sendMove(orig, dest, false, meta);
   }.bind(this);
 
   var onUserNewPiece = function(role, key, meta) {
@@ -87,7 +87,7 @@ module.exports = function(opts, redraw, parent) {
   var onMove = function(orig, dest, captured) {
     if (captured) {
       if (this.data.game.variant.key === 'bughouse'){
-          this.bugController.apiBugPiece(captured);
+        this.bugController.apiBugPiece(captured);
       }
       if (this.data.game.variant.key === 'atomic') {
         sound.explode();
@@ -97,11 +97,11 @@ module.exports = function(opts, redraw, parent) {
   }.bind(this);
 
   var onPremove = function(orig, dest, meta) {
-    promotion.start(this, orig, dest, meta);
+    if (!this.parent) promotion.start(this, orig, dest, meta);
   }.bind(this);
 
   var onCancelPremove = function() {
-    promotion.cancelPrePromotion(this);
+    if (!this.parent) promotion.cancelPrePromotion(this);
   }.bind(this);
 
   var onPredrop = function(role) {
@@ -353,7 +353,7 @@ module.exports = function(opts, redraw, parent) {
   }.bind(this);
   setTimeout(showYourMoveNotification, 500);
 
-  this.apiMove = function(o) {
+  this.apiMove = function(o) {      
     var d = this.data,
       playing = game.isPlayerPlaying(d);
 
@@ -443,7 +443,7 @@ module.exports = function(opts, redraw, parent) {
       this.moveOn.next();
       cevalSub.publish(this, o);
     }
-    if (!this.replaying() && playedColor !== d.player.color) {
+    if (!this.parent && !this.replaying() && playedColor !== d.player.color) {
       // atrocious hack to prevent race condition
       // with explosions and premoves
       // https://github.com/ornicar/lila/issues/343
