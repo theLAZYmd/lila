@@ -94,6 +94,20 @@ private[round] final class SocketHandler(
               member push ackEvent
           }
         }
+        case ("suggestMove", o) => {
+          parseMoveSug(o) foreach {
+            case (move, color, san) =>
+              bugSend(MoveSuggest(move, color, san))
+              member push ackEvent
+          }
+        }
+        case ("suggestDrop", o) => {
+          parseDropSug(o) foreach {
+            case (drop, color, san) =>
+              bugSend(MoveSuggest(drop._1, color, san))
+              member push ackEvent
+          }
+        }
         case ("rematch-yes", _) => send(RematchYes(playerId))
         case ("rematch-no", _) => send(RematchNo(playerId))
         case ("takeback-yes", _) => send(TakebackYes(playerId))
@@ -222,6 +236,22 @@ private[round] final class SocketHandler(
     role <- Role.allByName get roleS
     color <- Color(colorS)
   } yield (role, color)
+
+  private def parseMoveSug(o: JsObject) = for {
+    d <- o obj "d"
+    move <- parseOldMove(d)
+    colorS <- d str "color"
+    color <- Color(colorS)
+    san <- d str "san"
+  } yield (move, color, san)
+
+  private def parseDropSug(o: JsObject) = for {
+    d <- o obj "d"
+    drop <- parseDrop(o)
+    colorS <- d str "color"
+    color <- Color(colorS)
+    san <- d str "san"
+  } yield (drop, color, san)
 
   private def parseLag(d: JsObject) = MoveMetrics(
     d.int("l") orElse d.int("lag") map Centis.ofMillis,

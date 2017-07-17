@@ -113,6 +113,7 @@ package round {
 
   case class PieceRequest(role: Role, color: Color)
   case class PieceForbid(role: Role, color: Color)
+  case class MoveSuggest(move: Uci, color: Color, san: String)
 
   case class PlayResult(events: Events, fen: String, lastMove: Option[String])
 

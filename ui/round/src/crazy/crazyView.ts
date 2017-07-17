@@ -14,7 +14,7 @@ export default function pocket(ctrl, color, position) {
   var preDropRole = ctrl.vm.preDrop;
   var pocket = step.crazy.pockets[color === 'white' ? 0 : 1];
   var usablePos = position === (ctrl.vm.flip ? 'top' : 'bottom');
-  var usable = usablePos && !ctrl.replaying() && game.isPlayerPlaying(ctrl.data);
+  var usable = usablePos && !ctrl.replaying() && (game.isPlayerPlaying(ctrl.data) || ctrl.parent);
   var activeColor = color === ctrl.data.player.color;
   var captured = ctrl.vm.justCaptured;
   if (captured) captured = captured.promoted ? 'pawn' : captured.role;
@@ -56,14 +56,13 @@ export default function pocket(ctrl, color, position) {
                   $(e.currentTarget).addClass('blink');
                 }
               });
-          'webkitAnimationEnd mozAnimationEnd oAnimationEnd oanimationend animationend'.split(' ').forEach(function(event){
-                htmlElm.addEventListener(
-                  event,
-                  (e) => {
-                    $(e.currentTarget).removeClass('blink');
-                  }
-                );
-            })
+
+              htmlElm.addEventListener(
+                'animationend',
+                (e: any) => {
+                  if (e.animationName === 'pocketFades') $(e.currentTarget).removeClass('blink');
+                }
+              );
           }
         }
       }

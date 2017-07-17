@@ -81,11 +81,15 @@ private[round] final class Round(
     }
 
     case PieceRequest(role: Role, color: Color) => handle(!color) { pov =>
-      fuccess(List(Event.PieceRequest(role, color), Event.PlayerOppositeColorMessage(lila.chat.PlayerLine(color, "Partner requests " + role.name))))
+      fuccess(List(Event.PieceRequest(role, color), Event.PlayerColorMessage(lila.chat.PlayerLine(!color, "Partner requests " + role.name))))
     }
 
     case PieceForbid(role: Role, color: Color) => handle(!color) { pov =>
-      fuccess(List(Event.PieceForbid(role, color), Event.PlayerOppositeColorMessage(lila.chat.PlayerLine(color, "Partner forbids " + role.name))))
+      fuccess(List(Event.PieceForbid(role, color), Event.PlayerColorMessage(lila.chat.PlayerLine(!color, "Partner forbids " + role.name))))
+    }
+
+    case MoveSuggest(move: chess.format.Uci, color: Color, san: String) => handle(color) { pov =>
+      fuccess(List(Event.MoveSuggestion(move, color), Event.PlayerColorMessage(lila.chat.PlayerLine(color, "Partner suggests " + san))))
     }
 
     case FishnetPlay(uci, currentFen) => handle { game =>

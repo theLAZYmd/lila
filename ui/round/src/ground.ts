@@ -29,8 +29,8 @@ function makeConfig(ctrl): Config {
     },
     movable: {
       free: false,
-      color: playing ? data.player.color : null,
-      dests: playing ? util.parsePossibleMoves(data.possibleMoves) : {},
+      color: (playing || ctrl.parent) ? data.player.color : null,
+      dests: (playing || ctrl.parent) ? util.parsePossibleMoves(data.possibleMoves) : {},
       showDests: data.pref.destination,
       rookCastle: data.pref.rookCastle,
       events: {
@@ -43,7 +43,7 @@ function makeConfig(ctrl): Config {
       duration: data.pref.animationDuration
     },
     premovable: {
-      enabled: data.pref.enablePremove,
+      enabled: data.pref.enablePremove || ctrl.parent,
       showDests: data.pref.destination,
       castle: data.game.variant.key !== 'antichess',
       events: {
@@ -52,14 +52,14 @@ function makeConfig(ctrl): Config {
       }
     },
     predroppable: {
-      enabled: data.pref.enablePremove && (data.game.variant.key === 'crazyhouse' || data.game.variant.key === 'bughouse'),
+      enabled: (data.pref.enablePremove || ctrl.parent) && (data.game.variant.key === 'crazyhouse' || data.game.variant.key === 'bughouse'),
       events: {
         set: hooks.onPredrop,
         unset: hooks.onPredrop
       }
     },
     draggable: {
-      enabled: data.pref.moveEvent > 0,
+      enabled: (data.pref.moveEvent || !ctrl.bugController) ? data.pref.moveEvent > 0 : ctrl.bugController.data.pref.moveEvent > 0,
       showGhost: data.pref.highlight
     },
     selectable: {

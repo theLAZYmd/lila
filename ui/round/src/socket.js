@@ -61,6 +61,11 @@ module.exports = function(socket, ctrl) {
         ctrl.bugController.applyForbidPiece(o.pieceClass);
       }
     },
+    moveSuggest: function(o) {
+      if (ctrl.bugController){
+        ctrl.applyMoveSuggestion(o);
+      }
+    },
     reload: reload,
     redirect: ctrl.setRedirecting,
     clock: function(o) {

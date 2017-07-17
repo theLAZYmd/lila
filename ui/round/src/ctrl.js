@@ -19,6 +19,7 @@ var makeKeyboardMove = require('./keyboardMove').ctrl;
 var renderUser = require('./view/user');
 var cevalSub = require('./cevalSub');
 var keyboard = require('./keyboard');
+var cgUtil = require('chessground/util');
 
 module.exports = function(opts, redraw, parent) {
 
@@ -98,6 +99,24 @@ module.exports = function(opts, redraw, parent) {
 
   var onPremove = function(orig, dest, meta) {
     if (!this.parent) promotion.start(this, orig, dest, meta);
+    else {
+      var pieces = this.chessground.state.pieces;
+      var role = pieces[orig].role;
+      var cap = (pieces[dest] && (pieces[dest].color !== this.data.player.color)) ||
+                (role === 'pawn' && (orig.charAt(0) !== dest.charAt(0))) ?
+                'x' : '';
+      
+      role = (role === 'knight') ? 'N' : role.charAt(0).toUpperCase();
+      if (role === 'P') role = ((cap === 'x') ? orig.charAt(0) : '');
+      var ambiguousSan = role+cap+dest;
+        
+      var suggestion = { from: orig, to: dest, color: this.data.player.color, san: ambiguousSan };
+        
+      this.parent.socket.send('suggestMove', suggestion, { ackable: true });
+      suggestion.type = 'move';
+      this.applyMoveSuggestion(suggestion);
+      this.chessground.cancelPremove();
+    }
   }.bind(this);
 
   var onCancelPremove = function() {
@@ -106,6 +125,16 @@ module.exports = function(opts, redraw, parent) {
 
   var onPredrop = function(role) {
     this.vm.preDrop = role;
+    if (this.parent){
+      var drop = this.chessground.state.predroppable.current;
+      role = (role === 'knight') ? 'N' : role.charAt(0).toUpperCase();
+      var san = role+"@"+drop.key;
+      var suggestion = { role: drop.role, pos: drop.key, color: this.data.player.color, san: san };
+      this.parent.socket.send('suggestDrop', suggestion, { ackable: true});
+      suggestion.type = 'drop';
+      this.applyMoveSuggestion(suggestion);
+      this.chessground.cancelPredrop();
+    }
     redraw();
   }.bind(this);
 
@@ -169,14 +198,17 @@ module.exports = function(opts, redraw, parent) {
     var htmlElm = jq[0];
     
     jq.addClass('blink');
-    'webkitAnimationEnd mozAnimationEnd oAnimationEnd oanimationend animationend'.split(' ').forEach(function(event){
-        htmlElm.addEventListener(
-          event,
-          (e) => {
-            $(e.currentTarget).removeClass('blink');
-          }
-        );
-    });
+    
+    htmlElm.addEventListener(
+      'animationend',
+      function handler(e){
+        if (e.animationName === 'pocketFades'){
+          $(e.currentTarget).removeClass('blink');
+          e.currentTarget.removeEventListener(e.type, handler);
+        }
+      }
+    );
+      
     var short = role.charAt(0);
     if (short === 'k') short = 'n';
     sound.custom(short+'good')();
@@ -187,17 +219,75 @@ module.exports = function(opts, redraw, parent) {
     var htmlElm = jq[0];
       
     jq.addClass('blink');
-    'webkitAnimationEnd mozAnimationEnd oAnimationEnd oanimationend animationend'.split(' ').forEach(function(event){
-        htmlElm.addEventListener(
-          event,
-          (e) => {
-            $(e.currentTarget).removeClass('blink');
-          }
-        );
-    });
+      
+    htmlElm.addEventListener(
+      'animationend',
+      function handler(e){
+        if (e.animationName === 'pocketFades'){
+          $(e.currentTarget).removeClass('blink');
+          e.currentTarget.removeEventListener(e.type, handler);
+        }
+      }
+    );
+      
     var short = role.charAt(0);
     if (short === 'k') short = 'n';
     sound.custom(short+'bad')();
+  }
+  
+  this.applyMoveSuggestion = function(o){
+    var state = this.chessground.state;
+    var boardElpar = state.dom.elements.board.parentElement;
+    var bounds = state.dom.bounds();
+    var transform = state.browser.transform;
+    var asWhite = ('white' === ground.boardOrientation(this.data, this.vm.flip));
+    
+    var squares = [];
+      
+    if (o.type === 'move'){
+      squares.push(o.from);
+      squares.push(o.to);
+    }
+    else if (o.type === 'drop'){
+      squares.push(o.pos);
+    }
+    
+    squares.forEach(function(sk){
+      var translation = cgUtil.posToTranslate(cgUtil.key2pos(sk), asWhite, bounds);
+      translation[0] -= 4;
+      translation[1] -= 4;
+      var s = cgUtil.createEl('square', 'suggested');
+
+      s.cgKey = sk;
+      transform(s, cgUtil.translate(translation));
+        
+      s.addEventListener(
+        'animationend',
+        (e) => {
+          $(e.currentTarget).remove();
+        }
+      );
+        
+      boardElpar.insertBefore(s, boardElpar.firstChild);
+    });
+      
+    if (o.type === 'drop'){
+      var jq = (this.parent) ? $("div.lichess_ground").last().find($(".pocket.is2d > ."+o.role+"."+this.data.player.color)):
+                               $("div.lichess_ground").first().find($(".pocket.is2d > ."+o.role+"."+this.data.player.color));
+      var htmlElm = jq[0];
+      
+      jq.addClass('suggested');
+        
+      htmlElm.addEventListener(
+        'animationend',
+        function handler(e){
+          if (e.animationName === 'suggested'){
+            $(e.currentTarget).removeClass('suggested');
+            e.currentTarget.removeEventListener(e.type, handler);
+          }
+        }
+      );
+    }
   }
   
   this.makeCgHooks = function() {
@@ -353,7 +443,7 @@ module.exports = function(opts, redraw, parent) {
   }.bind(this);
   setTimeout(showYourMoveNotification, 500);
 
-  this.apiMove = function(o) {      
+  this.apiMove = function(o) {
     var d = this.data,
       playing = game.isPlayerPlaying(d);
 
@@ -407,9 +497,9 @@ module.exports = function(opts, redraw, parent) {
         this.chessground.setPieces(pieces);
       }
       this.chessground.set({
-        turnColor: d.game.player,
+        turnColor: (parent) ? ((d.player.color === 'white') ? 'black' : 'white') : d.game.player,
         movable: {
-          dests: playing ? util.parsePossibleMoves(d.possibleMoves) : {}
+          dests: (playing || this.parent) ? util.parsePossibleMoves(d.possibleMoves) : {}
         },
         check: !!o.check
       });

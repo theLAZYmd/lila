@@ -2,12 +2,12 @@ package lila.game
 
 import lila.common.PimpedJson._
 import play.api.libs.json._
-
 import chess.Pos
-import chess.{ Centis, PromotableRole, Color, Piece, Situation, Move => ChessMove, Drop => ChessDrop, Clock => ChessClock, Status }
+import chess.{ Centis, Color, Piece, PromotableRole, Situation, Status, Clock => ChessClock, Drop => ChessDrop, Move => ChessMove }
 import chess.variant.Crazyhouse
 import JsonView._
-import lila.chat.{ UserLine, PlayerLine }
+import chess.format.Uci
+import lila.chat.{ PlayerLine, UserLine }
 import lila.common.Maths.truncateAt
 
 sealed trait Event {
@@ -215,6 +215,27 @@ object Event {
     override def only = Some(!color)
   }
 
+  case class MoveSuggestion(move: Uci, color: Color) extends Event {
+    def typ = "moveSuggest"
+    def data = move match {
+      case Uci.Move(orig, dest, _) =>
+        Json.obj(
+          "type" -> "move",
+          "from" -> orig.key,
+          "to" -> dest.key
+        )
+      case Uci.Drop(role, pos) =>
+        Json.obj(
+          "type" -> "drop",
+          "role" -> role.name,
+          "pos" -> pos.key
+        )
+    }
+    override def owner = true
+    override def watcher = false
+    override def only = Some(color)
+  }
+
   case class RedirectOwner(
       color: Color,
       id: String,
@@ -245,12 +266,12 @@ object Event {
     override def troll = false
   }
 
-  case class PlayerOppositeColorMessage(line: PlayerLine) extends Event {
+  case class PlayerColorMessage(line: PlayerLine) extends Event {
     def typ = "message"
     def data = lila.chat.JsonView(line)
     override def owner = true
     override def troll = false
-    override def only = Some(!line.color)
+    override def only = Some(line.color)
   }
 
   case class UserMessage(line: UserLine, w: Boolean) extends Event {
