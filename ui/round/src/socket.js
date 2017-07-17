@@ -86,6 +86,8 @@ module.exports = function(socket, ctrl) {
       ctrl.setLoading(true);
       xhr.reload(ctrl).then(ctrl.reload);
       if (ctrl.bugController){
+        ctrl.bugController.parent = undefined;
+        ground.reload(ctrl.bugController);
         ctrl.bugController.data.game.winner = winner;
         ctrl.bugController.chessground.stop();
         ctrl.bugController.setLoading(true);
