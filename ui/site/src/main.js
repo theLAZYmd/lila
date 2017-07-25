@@ -684,7 +684,9 @@ lichess.topMenuIntent = function() {
       check: 'Check',
       newChallenge: 'NewChallenge',
       newPM: 'NewPM',
-      confirmation: 'Confirmation'
+      confirmation: 'Confirmation',
+      bugGo: 'Go',
+      bugSit: 'Sit'
     };
     var bugs = ['p', 'b', 'n', 'r', 'q'];
     var qual = ['bad', 'good'];

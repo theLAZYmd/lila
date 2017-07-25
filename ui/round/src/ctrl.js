@@ -187,11 +187,19 @@ module.exports = function(opts, redraw, parent) {
     
   this.requestPiece = function(role){
     this.socket.send('requestPiece', { role: role, color: this.data.player.color}, { ackable: true });
-  }
+  }.bind(this);
   
   this.forbidPiece = function(role){
     this.socket.send('forbidPiece', { role: role, color: this.data.player.color}, {ackable: true});
-  }
+  }.bind(this);
+  
+  this.bugGo = function(){
+    this.socket.send('bugGo', { color: this.data.player.color}, { ackable: true });
+  }.bind(this);
+  
+  this.bugSit = function(){
+    this.socket.send('bugSit', { color: this.data.player.color }, { ackable: true });
+  }.bind(this);
   
   this.applyRequestPiece = function(role){
     var jq = $("div.lichess_ground:last-child > .pocket.is2d > ."+role+"."+this.data.player.color);
@@ -288,6 +296,14 @@ module.exports = function(opts, redraw, parent) {
         }
       );
     }
+  }
+  
+  this.applyBugGo = function() {
+    sound.custom('bugGo')();
+  }
+  
+  this.applyBugSit = function() {
+    sound.custom('bugSit')();
   }
   
   this.makeCgHooks = function() {
@@ -702,7 +718,7 @@ module.exports = function(opts, redraw, parent) {
     if (color !== this.data.player.color) lichess.sound.berserk();
     redraw();
   }.bind(this);
-
+    
   this.moveOn = new moveOn(this, 'lichess.move_on');
 
   this.setLoading = function(v, duration) {
@@ -774,6 +790,10 @@ module.exports = function(opts, redraw, parent) {
     return game.drawable(this.data) && (this.lastDrawOfferAtPly || -99) < (this.vm.ply - 20);
   }.bind(this);
 
+  this.isBughouse = function() {
+    return this.data.game.variant.key === 'bughouse';
+  }.bind(this);
+    
   this.offerDraw = function() {
     if (this.canOfferDraw()) {
       this.lastDrawOfferAtPly = this.vm.ply;
@@ -782,7 +802,7 @@ module.exports = function(opts, redraw, parent) {
   }.bind(this);
 
   this.trans = lichess.trans(opts.i18n);
-
+    
   this.setChessground = function(cg) {
     this.chessground = cg;
     if (this.data.pref.keyboardMove) {

@@ -70,7 +70,9 @@ function renderTablePlay(ctrl) {
     game.abortable(d) ? button.standard(ctrl, null, 'L', 'abortGame', 'abort', null) :
     button.standard(ctrl, game.takebackable, 'i', 'proposeATakeback', 'takeback-yes', ctrl.takebackYes),
     button.standard(ctrl, ctrl.canOfferDraw, '2', 'offerDraw', 'draw-yes', ctrl.offerDraw),
-    ctrl.vm.resignConfirm ? button.resignConfirm(ctrl) : button.standard(ctrl, game.resignable, 'b', 'resign', 'resign-confirm', ctrl.resign)
+    ctrl.vm.resignConfirm ? button.resignConfirm(ctrl) : button.standard(ctrl, game.resignable, 'b', 'resign', 'resign-confirm', ctrl.resign),
+    button.standard(ctrl, ctrl.isBughouse, 'G', 'bugGo', 'bugGo', ctrl.bugGo),
+    button.standard(ctrl, ctrl.isBughouse, '2', 'bugSit', 'bugSit', ctrl.bugSit)
   ];
   let buttons: MaybeVNodes = loading ? [loader()] : (submit ? [submit] : [
     button.forceResign(ctrl),

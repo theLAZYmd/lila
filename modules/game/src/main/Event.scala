@@ -236,6 +236,24 @@ object Event {
     override def only = Some(color)
   }
 
+  case class BugGo(color: Color) extends Event {
+    def typ = "bugGo"
+    def data = Json.obj()
+
+    override def owner = true
+    override def watcher = false
+    override def only = Some(!color)
+  }
+
+  case class BugSit(color: Color) extends Event {
+    def typ = "bugSit"
+    def data = Json.obj()
+
+    override def owner = true
+    override def watcher = false
+    override def only = Some(!color)
+  }
+
   case class RedirectOwner(
       color: Color,
       id: String,

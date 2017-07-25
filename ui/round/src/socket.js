@@ -66,6 +66,16 @@ module.exports = function(socket, ctrl) {
         ctrl.applyMoveSuggestion(o);
       }
     },
+    bugGo: function() {
+      if (ctrl.bugController){
+        ctrl.applyBugGo();
+      }
+    },
+    bugSit: function() {
+      if (ctrl.bugController){
+        ctrl.applyBugSit();
+      }
+    },
     reload: reload,
     redirect: ctrl.setRedirecting,
     clock: function(o) {

@@ -92,6 +92,14 @@ private[round] final class Round(
       fuccess(List(Event.MoveSuggestion(move, color), Event.PlayerColorMessage(lila.chat.PlayerLine(color, "Partner suggests " + san))))
     }
 
+    case BugGo(color: Color) => handle(!color) { pov =>
+      fuccess(List(Event.BugGo(color), Event.PlayerColorMessage(lila.chat.PlayerLine(!color, "Partner says GO"))))
+    }
+
+    case BugSit(color: Color) => handle(!color) { pov =>
+      fuccess(List(Event.BugSit(color), Event.PlayerColorMessage(lila.chat.PlayerLine(!color, "Partner says SIT"))))
+    }
+
     case FishnetPlay(uci, currentFen) => handle { game =>
       player.fishnet(game, uci, currentFen, self)
     } >>- lila.mon.round.move.full.count()

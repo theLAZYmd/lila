@@ -108,6 +108,21 @@ private[round] final class SocketHandler(
               member push ackEvent
           }
         }
+        case ("bugGo", o) => {
+          parseColor(o) foreach {
+            case color =>
+              bugSend(BugGo(color))
+              member push ackEvent
+          }
+        }
+        case ("bugSit", o) => {
+          parseColor(o) foreach {
+            case color =>
+              bugSend(BugSit(color))
+              member push ackEvent
+          }
+        }
+
         case ("rematch-yes", _) => send(RematchYes(playerId))
         case ("rematch-no", _) => send(RematchNo(playerId))
         case ("takeback-yes", _) => send(TakebackYes(playerId))
@@ -252,6 +267,12 @@ private[round] final class SocketHandler(
     color <- Color(colorS)
     san <- d str "san"
   } yield (drop, color, san)
+
+  private def parseColor(o: JsObject) = for {
+    d <- o obj "d"
+    colorS <- d str "color"
+    color <- Color(colorS)
+  } yield color
 
   private def parseLag(d: JsObject) = MoveMetrics(
     d.int("l") orElse d.int("lag") map Centis.ofMillis,
