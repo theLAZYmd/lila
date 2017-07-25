@@ -24,6 +24,36 @@ module.exports = function(socket, ctrl) {
     });
   };
 
+  var antiSpam = function(time, coolDownTime, fnName){
+    var lastExec = 0;
+    var lastSpam = 0;
+    var coolDownCount = 0;
+    var throttled;
+    
+    return function(){
+        if (!throttled) throttled = throttle(5000, false, ctrl[fnName]());
+        var now = Date.now();
+        if (lastSpam && now-lastSpam < coolDownTime){
+          throttled();
+        }
+        else{
+          if (lastExec && now-lastExec < time){
+            coolDownCount++;
+            if (coolDownCount > 5){
+              lastSpam = now;
+              coolDownCount = 0;
+            }
+          }
+          else coolDownCount = 0;
+          ctrl[fnName]();
+          lastExec = now;
+        }
+    }
+  }
+  
+  var applyBugGo = antiSpam(2000, 10000, 'applyBugGo');
+  var applyBugSit = antiSpam(2000, 10000, 'applyBugSit');
+    
   var handlers = {
     takebackOffers: function(o) {
       ctrl.setLoading(false);
@@ -68,12 +98,12 @@ module.exports = function(socket, ctrl) {
     },
     bugGo: function() {
       if (ctrl.bugController){
-        ctrl.applyBugGo();
+        applyBugGo();
       }
     },
     bugSit: function() {
       if (ctrl.bugController){
-        ctrl.applyBugSit();
+        applyBugSit();
       }
     },
     reload: reload,
