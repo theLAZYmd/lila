@@ -14,7 +14,7 @@ export default function pocket(ctrl, color, position) {
   var preDropRole = ctrl.vm.preDrop;
   var pocket = step.crazy.pockets[color === 'white' ? 0 : 1];
   var usablePos = position === (ctrl.vm.flip ? 'top' : 'bottom');
-  var usable = usablePos && !ctrl.replaying() && game.isPlayerPlaying(ctrl.data);
+  var usable = usablePos && !ctrl.replaying() && (game.isPlayerPlaying(ctrl.data) || ctrl.parent);
   var activeColor = color === ctrl.data.player.color;
   var captured = ctrl.vm.justCaptured;
   if (captured) captured = captured.promoted ? 'pawn' : captured.role;
@@ -23,8 +23,8 @@ export default function pocket(ctrl, color, position) {
     hook: {
       insert: vnode => {
         eventNames.forEach(name => {
-          (vnode.elm as HTMLElement).addEventListener(name, e => {
-            if (position === (ctrl.vm.flip ? 'top' : 'bottom')) drag(ctrl, e);
+          (vnode.elm as HTMLElement).addEventListener(name, (e: any) => {
+            if (!e.shiftKey && position === (ctrl.vm.flip ? 'top' : 'bottom')) drag(ctrl, e);
           })
         });
       }
@@ -41,6 +41,30 @@ export default function pocket(ctrl, color, position) {
         'data-role': role,
         'data-color': color,
         'data-nb': nb,
+      },
+      hook: {
+        insert: vnode => {
+          if (ctrl.bugController && !ctrl.parent){
+            var htmlElm = (vnode.elm as HTMLElement);
+              htmlElm.addEventListener('dblclick', (e) => {
+                (ctrl.data.player.color === color) ? ctrl.requestPiece(role) : ctrl.forbidPiece(role);
+                $(e.currentTarget).addClass('blink');
+              });
+              htmlElm.addEventListener('click', (e: any) => {
+                if (e.shiftKey){
+                  (ctrl.data.player.color === color) ? ctrl.requestPiece(role) : ctrl.forbidPiece(role);
+                  $(e.currentTarget).addClass('blink');
+                }
+              });
+
+              htmlElm.addEventListener(
+                'animationend',
+                (e: any) => {
+                  if (e.animationName === 'pocketFades') $(e.currentTarget).removeClass('blink');
+                }
+              );
+          }
+        }
       }
     });
   }));

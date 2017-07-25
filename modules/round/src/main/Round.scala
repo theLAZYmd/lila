@@ -7,7 +7,7 @@ import org.joda.time.DateTime
 import scala.concurrent.duration._
 import actorApi._
 import round._
-import chess.{ Centis, Color, Piece, Status, Timestamp }
+import chess.{ Centis, Color, Piece, Role, Status, Timestamp }
 import lila.game.{ Event, Game, Pov }
 import lila.hub.actorApi.DeployPost
 import lila.hub.actorApi.map._
@@ -80,6 +80,18 @@ private[round] final class Round(
       }
     }
 
+    case PieceRequest(role: Role, color: Color) => handle(!color) { pov =>
+      fuccess(List(Event.PieceRequest(role, color), Event.PlayerColorMessage(lila.chat.PlayerLine(!color, "Partner requests " + role.name))))
+    }
+
+    case PieceForbid(role: Role, color: Color) => handle(!color) { pov =>
+      fuccess(List(Event.PieceForbid(role, color), Event.PlayerColorMessage(lila.chat.PlayerLine(!color, "Partner forbids " + role.name))))
+    }
+
+    case MoveSuggest(move: chess.format.Uci, color: Color, san: String) => handle(color) { pov =>
+      fuccess(List(Event.MoveSuggestion(move, color), Event.PlayerColorMessage(lila.chat.PlayerLine(color, "Partner suggests " + san))))
+    }
+
     case FishnetPlay(uci, currentFen) => handle { game =>
       player.fishnet(game, uci, currentFen, self)
     } >>- lila.mon.round.move.full.count()
@@ -97,11 +109,19 @@ private[round] final class Round(
     }
 
     case GoBerserk(color) => handle(color) { pov =>
-      pov.game.goBerserk(color) ?? { progress =>
-        messenger.system(pov.game, (_.untranslated(
-          s"${pov.color.name.capitalize} is going berserk!"
-        )))
-        proxy.save(progress) >> proxy.invalidating(_ goBerserk pov) inject progress.events
+      pov.game.variant match {
+        case chess.variant.Bughouse =>
+          fuccess(List())
+        case _ =>
+          pov.game.goBerserk(color) ?? {
+            progress =>
+              messenger.system(pov.game, (_.untranslated(
+                s"${
+                  pov.color.name.capitalize
+                } is going berserk!"
+              )))
+              proxy.save(progress) >> proxy.invalidating(_ goBerserk pov) inject progress.events
+          }
       }
     }
 
@@ -155,7 +175,12 @@ private[round] final class Round(
 
     case DrawYes(playerRef) => handle(playerRef)(drawer.yes)
     case DrawNo(playerRef) => handle(playerRef)(drawer.no)
-    case DrawClaim(playerId) => handle(playerId)(drawer.claim)
+    case DrawClaim(playerId) => handle(playerId) { pov =>
+      pov.game.variant match {
+        case chess.variant.Bughouse => fuccess(List())
+        case _ => drawer.claim(pov)
+      }
+    }
     case DrawForce => handle(drawer force _)
     case Cheat(color) => handle { game =>
       (game.playable && !game.imported) ?? {
@@ -164,10 +189,15 @@ private[round] final class Round(
     }
 
     case Threefold => proxy withGame { game =>
-      drawer autoThreefold game map {
-        _ foreach { pov =>
-          self ! DrawClaim(pov.player.id)
-        }
+      game.variant match {
+        case chess.variant.Bughouse =>
+          fuccess(List())
+        case _ =>
+          drawer autoThreefold game map {
+            _ foreach { pov =>
+              self ! DrawClaim(pov.player.id)
+            }
+          }
       }
     }
 

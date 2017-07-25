@@ -122,6 +122,11 @@ object Tv {
       icon = P.Crazyhouse.iconChar.toString,
       filters = Seq(variant(V.Crazyhouse), freshBlitz)
     )
+    case object Bughouse extends Channel(
+      name = V.Bughouse.name,
+      icon = P.Bughouse.iconChar.toString,
+      filters = Seq(variant(V.Bughouse), freshBlitz)
+    )
     case object UltraBullet extends Channel(
       name = S.UltraBullet.name,
       icon = P.UltraBullet.iconChar.toString,
@@ -135,7 +140,7 @@ object Tv {
     val all = List(
       Best,
       Bullet, Blitz, Classical,
-      Crazyhouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings,
+      Crazyhouse, Bughouse, Chess960, KingOfTheHill, ThreeCheck, Antichess, Atomic, Horde, RacingKings,
       UltraBullet,
       Computer
     )

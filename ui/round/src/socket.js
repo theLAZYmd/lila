@@ -51,6 +51,21 @@ module.exports = function(socket, ctrl) {
           ctrl.bugController.apiMove(o);
       }
     },
+    pieceRequest: function(o) {
+      if (ctrl.bugController){
+        ctrl.bugController.applyRequestPiece(o.pieceClass);
+      }
+    },
+    pieceForbid: function(o) {
+      if (ctrl.bugController){
+        ctrl.bugController.applyForbidPiece(o.pieceClass);
+      }
+    },
+    moveSuggest: function(o) {
+      if (ctrl.bugController){
+        ctrl.applyMoveSuggestion(o);
+      }
+    },
     reload: reload,
     redirect: ctrl.setRedirecting,
     clock: function(o) {
@@ -71,6 +86,8 @@ module.exports = function(socket, ctrl) {
       ctrl.setLoading(true);
       xhr.reload(ctrl).then(ctrl.reload);
       if (ctrl.bugController){
+        ctrl.bugController.parent = undefined;
+        ground.reload(ctrl.bugController);
         ctrl.bugController.data.game.winner = winner;
         ctrl.bugController.chessground.stop();
         ctrl.bugController.setLoading(true);

@@ -406,7 +406,7 @@ case class Game(
       )) ++ List(Event.Clock(newClock))
     }
 
-  def resignable = playable && !abortable
+  def resignable = playable && !abortable && (playedTurns > 25)
   def drawable = playable && !abortable
 
   def finish(status: Status, winner: Option[Color]) = Progress(

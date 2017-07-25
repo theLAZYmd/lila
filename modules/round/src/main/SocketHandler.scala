@@ -6,7 +6,7 @@ import scala.util.Try
 import akka.actor._
 import akka.pattern.ask
 import chess.format.Uci
-import chess.{ Centis, Color, MoveMetrics }
+import chess.{ Centis, Color, MoveMetrics, Role }
 import play.api.libs.json.{ JsObject, Json }
 import actorApi._
 import round._
@@ -42,6 +42,7 @@ private[round] final class SocketHandler(
   ): Handler.Controller = {
 
     def send(msg: Any) { roundMap ! Tell(gameId, msg) }
+    def bugSend(msg: Any) { bugId.foreach(bgid => roundMap ! Tell(bgid, msg)) }
 
     def ping(o: JsObject) = socket ! Ping(uid.value, o int "v", o int "l")
 
@@ -78,6 +79,34 @@ private[round] final class SocketHandler(
             }
             send(HumanPlay(playerId, drop, blur, lag, promise.some))
             member push ackEvent
+        }
+        case ("requestPiece", o) => {
+          parseRequestPiece(o) foreach {
+            case (role, color) =>
+              bugSend(PieceRequest(role, color))
+              member push ackEvent
+          }
+        }
+        case ("forbidPiece", o) => {
+          parseForbidPiece(o) foreach {
+            case (role, color) =>
+              bugSend(PieceForbid(role, color))
+              member push ackEvent
+          }
+        }
+        case ("suggestMove", o) => {
+          parseMoveSug(o) foreach {
+            case (move, color, san) =>
+              bugSend(MoveSuggest(move, color, san))
+              member push ackEvent
+          }
+        }
+        case ("suggestDrop", o) => {
+          parseDropSug(o) foreach {
+            case (drop, color, san) =>
+              bugSend(MoveSuggest(drop._1, color, san))
+              member push ackEvent
+          }
         }
         case ("rematch-yes", _) => send(RematchYes(playerId))
         case ("rematch-no", _) => send(RematchNo(playerId))
@@ -191,6 +220,38 @@ private[round] final class SocketHandler(
     drop <- Uci.Drop.fromStrings(role, pos)
     blur = d int "b" contains 1
   } yield (drop, blur, parseLag(d))
+
+  private def parseRequestPiece(o: JsObject) = for {
+    d <- o obj "d"
+    roleS <- d str "role"
+    colorS <- d str "color"
+    role <- Role.allByName get roleS
+    color <- Color(colorS)
+  } yield (role, color)
+
+  private def parseForbidPiece(o: JsObject) = for {
+    d <- o obj "d"
+    roleS <- d str "role"
+    colorS <- d str "color"
+    role <- Role.allByName get roleS
+    color <- Color(colorS)
+  } yield (role, color)
+
+  private def parseMoveSug(o: JsObject) = for {
+    d <- o obj "d"
+    move <- parseOldMove(d)
+    colorS <- d str "color"
+    color <- Color(colorS)
+    san <- d str "san"
+  } yield (move, color, san)
+
+  private def parseDropSug(o: JsObject) = for {
+    d <- o obj "d"
+    drop <- parseDrop(o)
+    colorS <- d str "color"
+    color <- Color(colorS)
+    san <- d str "san"
+  } yield (drop, color, san)
 
   private def parseLag(d: JsObject) = MoveMetrics(
     d.int("l") orElse d.int("lag") map Centis.ofMillis,

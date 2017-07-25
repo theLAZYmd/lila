@@ -686,6 +686,13 @@ lichess.topMenuIntent = function() {
       newPM: 'NewPM',
       confirmation: 'Confirmation'
     };
+    var bugs = ['p', 'b', 'n', 'r', 'q'];
+    var qual = ['bad', 'good'];
+    for (var i=0; i<5; i++){
+      for (var j=0; j<2; j++){
+        names[bugs[i]+qual[j]] = bugs[i]+qual[j];
+      }
+    }
     for (var i = 0; i <= 10; i++) names['countDown' + i] = 'CountDown' + i;
 
     var volumes = {

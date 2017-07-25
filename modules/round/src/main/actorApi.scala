@@ -98,7 +98,7 @@ case class SetGame(game: Option[lila.game.Game])
 
 package round {
 
-  import chess.{ Piece, Status, Timestamp }
+  import chess.{ Piece, Role, Status, Timestamp }
 
   case class HumanPlay(
       playerId: String,
@@ -110,6 +110,10 @@ package round {
 
     val trace = lila.mon.round.move.trace.create
   }
+
+  case class PieceRequest(role: Role, color: Color)
+  case class PieceForbid(role: Role, color: Color)
+  case class MoveSuggest(move: Uci, color: Color, san: String)
 
   case class PlayResult(events: Events, fen: String, lastMove: Option[String])
 

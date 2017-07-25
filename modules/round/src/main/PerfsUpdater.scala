@@ -40,6 +40,8 @@ final class PerfsUpdater(
             updateRatings(ratingsW.racingKings, ratingsB.racingKings, result, system)
           case chess.variant.Crazyhouse =>
             updateRatings(ratingsW.crazyhouse, ratingsB.crazyhouse, result, system)
+          case chess.variant.Bughouse =>
+            updateRatings(ratingsW.bughouse, ratingsB.bughouse, result, system)
           case chess.variant.Standard => game.speed match {
             case Speed.Bullet =>
               updateRatings(ratingsW.bullet, ratingsB.bullet, result, system)
@@ -87,6 +89,7 @@ final class PerfsUpdater(
     horde: Rating,
     racingKings: Rating,
     crazyhouse: Rating,
+    bughouse: Rating,
     ultraBullet: Rating,
     bullet: Rating,
     blitz: Rating,
@@ -103,6 +106,7 @@ final class PerfsUpdater(
     horde = perfs.horde.toRating,
     racingKings = perfs.racingKings.toRating,
     crazyhouse = perfs.crazyhouse.toRating,
+    bughouse = perfs.bughouse.toRating,
     ultraBullet = perfs.ultraBullet.toRating,
     bullet = perfs.bullet.toRating,
     blitz = perfs.blitz.toRating,
@@ -147,6 +151,7 @@ final class PerfsUpdater(
       horde = addRatingIf(game.ratingVariant.horde, perfs.horde, ratings.horde),
       racingKings = addRatingIf(game.ratingVariant.racingKings, perfs.racingKings, ratings.racingKings),
       crazyhouse = addRatingIf(game.ratingVariant.crazyhouse, perfs.crazyhouse, ratings.crazyhouse),
+      bughouse = addRatingIf(game.ratingVariant.bughouse, perfs.bughouse, ratings.bughouse),
       ultraBullet = addRatingIf(isStd && speed == Speed.UltraBullet, perfs.ultraBullet, ratings.ultraBullet),
       bullet = addRatingIf(isStd && speed == Speed.Bullet, perfs.bullet, ratings.bullet),
       blitz = addRatingIf(isStd && speed == Speed.Blitz, perfs.blitz, ratings.blitz),

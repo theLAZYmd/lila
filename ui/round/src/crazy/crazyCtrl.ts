@@ -3,7 +3,7 @@ import { dragNewPiece } from 'chessground/drag';
 
 export function drag(ctrl, e) {
   if (e.button !== undefined && e.button !== 0) return; // only touch or left click
-  if (ctrl.replaying() || !game.isPlayerPlaying(ctrl.data)) return;
+  if (ctrl.replaying() || !(game.isPlayerPlaying(ctrl.data) || ctrl.parent)) return;
   var role = e.target.getAttribute('data-role'),
     color = e.target.getAttribute('data-color'),
     number = e.target.getAttribute('data-nb');
