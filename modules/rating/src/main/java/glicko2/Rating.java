@@ -31,7 +31,7 @@ public class Rating {
 		this.rating = initRating;
 		this.ratingDeviation = initRatingDeviation;
 		this.volatility = initVolatility;
-    this.numberOfResults = nbResults;
+        this.numberOfResults = nbResults;
 	}
 
 	/**

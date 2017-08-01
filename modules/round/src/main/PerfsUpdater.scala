@@ -17,11 +17,13 @@ final class PerfsUpdater(
   private val TAU = 0.75d
   private val system = new RatingCalculator(VOLATILITY, TAU)
 
-  def save(game: Game, white: User, black: User, resetGameRatings: Boolean = false): Funit =
+  def save(game: Game, white: User, black: User, bugGameO: Option[Game] = None, resetGameRatings: Boolean = false, bugWhiteO: Option[User] = None, bugBlackO: Option[User] = None): Funit =
     PerfPicker.main(game) ?? { mainPerf =>
       (game.rated && game.finished && game.accountable && !white.lame && !black.lame) ?? {
         val ratingsW = mkRatings(white.perfs)
         val ratingsB = mkRatings(black.perfs)
+        val ratingsBugWO = bugWhiteO.map(bugWhite => mkRatings(bugWhite.perfs))
+        val ratingsBugBO = bugBlackO.map(bugBlack => mkRatings(bugBlack.perfs))
         val result = resultOf(game)
         game.ratingVariant match {
           case chess.variant.Chess960 =>
@@ -41,7 +43,13 @@ final class PerfsUpdater(
           case chess.variant.Crazyhouse =>
             updateRatings(ratingsW.crazyhouse, ratingsB.crazyhouse, result, system)
           case chess.variant.Bughouse =>
-            updateRatings(ratingsW.bughouse, ratingsB.bughouse, result, system)
+            (
+              for {
+                ratingsBugW <- ratingsBugWO
+                ratingsBugB <- ratingsBugBO
+              } yield (bugUpdateRatings(ratingsW.bughouse, ratingsB.bughouse, ratingsBugW.bughouse, ratingsBugB.bughouse, result, system))
+            ).getOrElse(updateRatings(ratingsW.bughouse, ratingsB.bughouse, result, system))
+
           case chess.variant.Standard => game.speed match {
             case Speed.Bullet =>
               updateRatings(ratingsW.bullet, ratingsB.bullet, result, system)
@@ -58,25 +66,59 @@ final class PerfsUpdater(
         }
         val perfsW = mkPerfs(ratingsW, white.perfs, game)
         val perfsB = mkPerfs(ratingsB, black.perfs, game)
+        val ratUsrGamePerfsWO = (ratingsBugWO zip bugWhiteO zip bugGameO).map {
+          case ((ratingsBugW, bugWhite), bugGame) =>
+            (bugWhite, bugGame, mkPerfs(ratingsBugW, bugWhite.perfs, bugGame))
+        }
+        val ratUsrGamePerfsBO = (ratingsBugBO zip bugBlackO zip bugGameO).map {
+          case ((ratingsBugB, bugBlack), bugGame) =>
+            (bugBlack, mkPerfs(ratingsBugB, bugBlack.perfs, bugGame))
+        }
+
         def intRatingLens(perfs: Perfs) = mainPerf(perfs).glicko.intRating
         resetGameRatings.fold(
           GameRepo.setRatingAndDiffs(
             game.id,
             intRatingLens(white.perfs) -> (intRatingLens(perfsW) - intRatingLens(white.perfs)),
             intRatingLens(black.perfs) -> (intRatingLens(perfsB) - intRatingLens(black.perfs))
-          ),
+          ) zip
+            (ratUsrGamePerfsWO zip ratUsrGamePerfsBO).headOption.map {
+              case ((bugWhite, bugGame, bugPerfsW), (bugBlack, bugPerfsB)) =>
+                GameRepo.setRatingAndDiffs(
+                  bugGame.id,
+                  intRatingLens(bugWhite.perfs) -> (intRatingLens(bugPerfsW) - intRatingLens(bugWhite.perfs)),
+                  intRatingLens(bugBlack.perfs) -> (intRatingLens(bugPerfsB) - intRatingLens(bugBlack.perfs))
+                )
+            }.getOrElse(funit),
           GameRepo.setRatingDiffs(
             game.id,
             intRatingLens(perfsW) - intRatingLens(white.perfs),
             intRatingLens(perfsB) - intRatingLens(black.perfs)
-          )
+          ) zip
+            (ratUsrGamePerfsWO zip ratUsrGamePerfsBO).headOption.map {
+              case ((bugWhite, bugGame, bugPerfsW), (bugBlack, bugPerfsB)) =>
+                GameRepo.setRatingDiffs(
+                  bugGame.id,
+                  intRatingLens(bugPerfsW) - intRatingLens(bugWhite.perfs),
+                  intRatingLens(bugPerfsB) - intRatingLens(bugBlack.perfs)
+                )
+            }.getOrElse(funit)
         ) zip
           UserRepo.setPerfs(white, perfsW, white.perfs) zip
           UserRepo.setPerfs(black, perfsB, black.perfs) zip
           historyApi.add(white, game, perfsW) zip
           historyApi.add(black, game, perfsB) zip
           rankingApi.save(white.id, game.perfType, perfsW) zip
-          rankingApi.save(black.id, game.perfType, perfsB)
+          rankingApi.save(black.id, game.perfType, perfsB) zip
+          (ratUsrGamePerfsWO zip ratUsrGamePerfsBO).headOption.map {
+            case ((bugWhite, bugGame, bugPerfsW), (bugBlack, bugPerfsB)) =>
+              UserRepo.setPerfs(bugWhite, bugPerfsW, bugWhite.perfs) zip
+                UserRepo.setPerfs(bugBlack, bugPerfsB, bugBlack.perfs) zip
+                historyApi.add(bugWhite, bugGame, bugPerfsW) zip
+                historyApi.add(bugBlack, bugGame, bugPerfsB) zip
+                rankingApi.save(bugWhite.id, bugGame.perfType, bugPerfsW) zip
+                rankingApi.save(bugBlack.id, bugGame.perfType, bugPerfsB)
+          }.getOrElse(funit)
       }.void
     }
 
@@ -130,6 +172,30 @@ final class PerfsUpdater(
     }
     try {
       system.updateRatings(results)
+    }
+    catch {
+      case e: Exception => logger.error("update ratings", e)
+    }
+  }
+
+  private def bugUpdateRatings(white: Rating, black: Rating, bugWhite: Rating, bugBlack: Rating, result: Glicko.Result, system: RatingCalculator) {
+    val results = new RatingPeriodResults()
+    result match {
+      case Glicko.Result.Draw => {
+        results.addDraw(white, black)
+        results.addDraw(bugBlack, bugWhite)
+      }
+      case Glicko.Result.Win => {
+        results.addResult(white, black)
+        results.addResult(bugBlack, bugWhite)
+      }
+      case Glicko.Result.Loss => {
+        results.addResult(black, white)
+        results.addResult(bugWhite, bugBlack)
+      }
+    }
+    try {
+      system.bugUpdateRatings(results)
     }
     catch {
       case e: Exception => logger.error("update ratings", e)

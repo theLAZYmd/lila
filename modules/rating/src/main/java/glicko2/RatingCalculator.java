@@ -6,6 +6,7 @@
  */
 package org.goochjs.glicko2;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -60,6 +61,34 @@ public class RatingCalculator {
    *
    * @param results
    */
+
+  public void bugUpdateRatings(RatingPeriodResults results) {
+    for ( Rating player : results.getParticipants() ) {
+      List<Result> resultsList = results.getResults(player);
+      Result nonBugResult = resultsList.get(0);
+      Result bugResult = results.getBugResult(player);
+      Rating partner = (player == nonBugResult.getWinner()) ? bugResult.getWinner() : bugResult.getLoser();
+
+      if ( results.getResults(player).size() > 0 ) {
+        calculateNewBugRating(player, partner, Arrays.asList(nonBugResult, bugResult));
+      } else {
+        // if a player does not compete during the rating period, then only Step 6 applies.
+        // the player's rating and volatility parameters remain the same but deviation increases
+        player.setWorkingRating(player.getGlicko2Rating());
+        player.setWorkingRatingDeviation(calculateNewRD(player.getGlicko2RatingDeviation(), player.getVolatility()));
+        player.setWorkingVolatility(player.getVolatility());
+      }
+    }
+
+    // now iterate through the participants and confirm their new ratings
+    for ( Rating player : results.getParticipants() ) {
+      player.finaliseRating();
+    }
+
+    // lastly, clear the result set down in anticipation of the next rating period
+    results.clear();
+  }
+
   public void updateRatings(RatingPeriodResults results) {
     for ( Rating player : results.getParticipants() ) {
       if ( results.getResults(player).size() > 0 ) {
@@ -89,6 +118,79 @@ public class RatingCalculator {
    * @param player
    * @param results
    */
+
+  private void calculateNewBugRating(Rating player, Rating partner, List<Result> results) throws RuntimeException {
+    double phi = player.getGlicko2RatingDeviation();
+    double sigma = player.getVolatility();
+    double a = Math.log( Math.pow(sigma, 2) );
+    double delta = bugDelta(player, partner, results);
+    double v = bugV(player, partner, results);
+
+    // step 5.2 - set the initial values of the iterative algorithm to come in step 5.4
+    double A = a;
+    double B = 0.0;
+    if ( Math.pow(delta, 2) > Math.pow(phi, 2) + v ) {
+      B = Math.log( Math.pow(delta, 2) - Math.pow(phi, 2) - v );
+    } else {
+      double k = 1;
+      B = a - ( k * Math.abs(tau));
+
+      while ( f(B , delta, phi, v, a, tau) < 0 ) {
+        k++;
+        B = a - ( k * Math.abs(tau));
+      }
+    }
+
+    // step 5.3
+    double fA = f(A , delta, phi, v, a, tau);
+    double fB = f(B , delta, phi, v, a, tau);
+
+    // step 5.4
+    int iterations = 0;
+    while ( Math.abs(B - A) > CONVERGENCE_TOLERANCE && iterations < ITERATION_MAX) {
+      ++iterations;
+      // System.out.println(String.format("%f - %f (%f) > %f", B, A, Math.abs(B - A), CONVERGENCE_TOLERANCE));
+      double C = A + (( (A-B)*fA ) / (fB - fA));
+      double fC = f(C , delta, phi, v, a, tau);
+
+      if ( fC * fB < 0 ) {
+        A = B;
+        fA = fB;
+      } else {
+        fA = fA / 2.0;
+      }
+
+      B = C;
+      fB = fC;
+    }
+    if (iterations == ITERATION_MAX) {
+      System.out.println(String.format("Convergence fail at %d iterations", iterations));
+      System.out.println(player.toString());
+      for ( Result result: results ) {
+        System.out.println(result.toString());
+      }
+      throw new RuntimeException("Convergence fail");
+    }
+
+    double newSigma = Math.exp( A/2.0 );
+
+    player.setWorkingVolatility(newSigma);
+
+    // Step 6
+    double phiStar = calculateNewRD( phi, newSigma );
+
+    // Step 7
+    double newPhi = 1.0 / Math.sqrt(( 1.0 / Math.pow(phiStar, 2) ) + ( 1.0 / v ));
+
+    // note that the newly calculated rating values are stored in a "working" area in the Rating object
+    // this avoids us attempting to calculate subsequent participants' ratings against a moving target
+    player.setWorkingRating(
+            player.getGlicko2Rating()
+                    + ( Math.pow(newPhi, 2) * bugOutcomeBasedRating(player, partner, results)));
+    player.setWorkingRatingDeviation(newPhi);
+    player.incrementNumberOfResults(results.size()/2);
+  }
+
   private void calculateNewRating(Rating player, List<Result> results) throws RuntimeException {
     double phi = player.getGlicko2RatingDeviation();
     double sigma = player.getVolatility();
@@ -229,6 +331,30 @@ public class RatingCalculator {
     return v(player, results) * outcomeBasedRating(player, results);
   }
 
+  private double bugV(Rating player, Rating partner, List<Result> results) {
+    double v = 0.0;
+
+    Rating[] playPart = {player, partner};
+
+    for ( int i=0; i<2; i++ ) {
+      Result result = results.get(i);
+      v = v + 0.5*(
+              ( Math.pow( g(result.getOpponent(playPart[i]).getGlicko2RatingDeviation()), 2) )
+                      * E(playPart[i].getGlicko2Rating(),
+                      result.getOpponent(playPart[i]).getGlicko2Rating(),
+                      result.getOpponent(playPart[i]).getGlicko2RatingDeviation())
+                      * ( 1.0 - E(playPart[i].getGlicko2Rating(),
+                      result.getOpponent(playPart[i]).getGlicko2Rating(),
+                      result.getOpponent(playPart[i]).getGlicko2RatingDeviation())
+              ));
+    }
+
+    return Math.pow(v, -1);
+  }
+
+  private double bugDelta(Rating player, Rating partner, List<Result> results) {
+    return bugV(player, partner, results) * bugOutcomeBasedRating(player, partner, results);
+  }
 
   /**
    * This is a formula as per step 4 of Glickman's paper.
@@ -253,6 +379,24 @@ public class RatingCalculator {
     return outcomeBasedRating;
   }
 
+  private double bugOutcomeBasedRating(Rating player, Rating partner, List<Result> results) {
+    double outcomeBasedRating = 0;
+
+    Rating[] playPart = {player, partner};
+
+    for ( int i=0; i<2; i++ ) {
+      Result result = results.get(i);
+      outcomeBasedRating = outcomeBasedRating
+              + 0.5*( g(result.getOpponent(playPart[i]).getGlicko2RatingDeviation())
+              * ( result.getScore(playPart[i]) - E(
+              playPart[i].getGlicko2Rating(),
+              result.getOpponent(playPart[i]).getGlicko2Rating(),
+              result.getOpponent(playPart[i]).getGlicko2RatingDeviation() ))
+      );
+    }
+
+    return outcomeBasedRating;
+  }
 
   /**
    * This is the formula defined in step 6. It is also used for players

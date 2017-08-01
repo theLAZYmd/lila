@@ -81,6 +81,23 @@ public class RatingPeriodResults {
 		return filteredResults;
 	}
 
+	public List<Result> getResults(){
+		return results;
+	}
+
+	public Result getBugResult(Rating player) {
+		Result filteredResult = null;
+
+		for ( Result result : results) {
+			if ( !result.participated(player) ) {
+				filteredResult = result;
+				return filteredResult;
+			}
+		}
+
+		return filteredResult;
+	}
+
 	
 	/**
 	 * Get all the participants whose results are being tracked.
@@ -96,7 +113,16 @@ public class RatingPeriodResults {
 
 		return participants;
 	}
-	
+
+	public Set<Rating> getNonBugParticipants() {
+		Set<Rating> nonBugParticipants = new HashSet<Rating>();
+
+		Result result = results.get(0);
+		nonBugParticipants.add(result.getWinner());
+		nonBugParticipants.add(result.getLoser());
+
+		return nonBugParticipants;
+	}
 	
 	/**
 	 * Add a participant to the rating period, e.g. so that their rating will

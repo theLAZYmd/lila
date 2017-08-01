@@ -60,7 +60,7 @@ private[round] final class Finisher(
     status: Status.type => Status,
     winner: Option[Color] = None
   )(implicit proxy: GameProxy): Fu[Events] = {
-    apply(game, status, winner) >>- playban.other(game, status, winner)
+    apply(game, status, winner, rating = false) >>- playban.other(game, status, winner)
   }
 
   def other(
@@ -77,7 +77,8 @@ private[round] final class Finisher(
     game: Game,
     makeStatus: Status.type => Status,
     winner: Option[Color] = None,
-    message: Option[SelectI18nKey] = None
+    message: Option[SelectI18nKey] = None,
+    rating: Boolean = true
   )(implicit proxy: GameProxy): Fu[Events] = {
     val status = makeStatus(Status)
     val prog = game.finish(status, winner)
@@ -98,14 +99,23 @@ private[round] final class Finisher(
             g.whitePlayer.userId,
             g.blackPlayer.userId
           ).zip {
+            status match {
+              case Status.NoStart => fuccess(((None, None), None))
+              case _ => g.bugGameId.map(bgId => GameRepo.game(bgId).flatMap(bgO =>
+                bgO.map(bg => UserRepo.pair(
+                  bg.whitePlayer.userId, bg.blackPlayer.userId
+                ).map((_, bgO))).getOrElse(fuccess(((None, None), None))))).getOrElse(fuccess(((None, None), None)))
+            }
+          }.zip {
             // because the game comes from the round GameProxy,
             // it doesn't have the tvAt field set
             // so we fetch it from the DB
             GameRepo hydrateTvAt g
           } flatMap {
-            case ((whiteO, blackO), g) => {
+            case (((whiteO, blackO), ((whiteBugO, blackBugO), bgO)), g) => {
               val finish = FinishGame(g, whiteO, blackO)
-              updateCountAndPerfs(finish) inject {
+              val bugFinish = bgO.map(FinishGame(_, whiteBugO, blackBugO))
+              updateCountAndPerfs(finish, rating, bugFinish) inject {
                 message foreach { messenger.system(g, _) }
                 GameRepo game g.id foreach { newGame =>
                   bus.publish(finish.copy(game = newGame | g), 'finishGame)
@@ -117,11 +127,14 @@ private[round] final class Finisher(
       }
   } >>- proxy.invalidate
 
-  private def updateCountAndPerfs(finish: FinishGame): Funit =
+  private def updateCountAndPerfs(finish: FinishGame, rating: Boolean, bugFinish: Option[FinishGame]): Funit =
     (!finish.isVsSelf && !finish.game.aborted) ?? {
       (finish.white |@| finish.black).tupled ?? {
         case (white, black) =>
-          crosstableApi add finish.game zip perfsUpdater.save(finish.game, white, black)
+          crosstableApi add finish.game zip {
+            if (rating) perfsUpdater.save(finish.game, white, black, bugGameO = bugFinish.map(_.game), bugWhiteO = bugFinish.flatMap(_.white), bugBlackO = bugFinish.flatMap(_.black))
+            else funit
+          }
       } zip
         (finish.white ?? incNbGames(finish.game)) zip
         (finish.black ?? incNbGames(finish.game)) void

@@ -148,7 +148,7 @@ private[round] final class SocketHandler(
           sd ← d int "sd"
         } send(HoldAlert(playerId, mean, sd, member.ip))
         case ("berserk", _) => member.userId foreach { userId =>
-          hub.actor.tournamentApi ! Berserk(gameId, userId)
+          bugId.fold(hub.actor.tournamentApi ! Berserk(gameId, userId))(bgId => Unit)
           member push ackEvent
         }
         case ("rep", o) => for {
