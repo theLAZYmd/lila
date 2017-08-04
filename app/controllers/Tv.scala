@@ -1,10 +1,10 @@
 package controllers
 
 import play.api.mvc._
-
 import lila.api.Context
-import lila.app._
+import lila.app.{ fuccess, _ }
 import lila.game.{ GameRepo, Pov }
+import play.api.libs.json.JsObject
 import views._
 
 object Tv extends LilaController {
@@ -33,15 +33,22 @@ object Tv extends LilaController {
       case (game, history) =>
         val flip = getBool("flip")
         val pov = flip.fold(Pov second game, Pov first game)
+        val bugPovFuOp = (pov.bugGameId.fold(fuccess(None: Option[Pov]))(bgId => GameRepo.pov(bgId, !pov.color)));
         val onTv = lila.round.OnLichessTv(channel.key, flip)
         negotiate(
           html = {
           Env.api.roundApi.watcher(pov, lila.api.Mobile.Api.currentVersion, tv = onTv.some) zip
             Env.game.crosstableApi(game) zip
-            Env.tv.tv.getChampions map {
-              case ((data, cross), champions) => NoCache {
+            Env.tv.tv.getChampions zip
+            {
+              for {
+                bugPovOp <- bugPovFuOp
+                bugDataOp <- bugPovOp.fold(fuccess(None: Option[JsObject]))(Env.api.roundApi.watcher(_, lila.api.Mobile.Api.currentVersion, tv = onTv.some).map(Some(_)))
+              } yield (bugDataOp)
+            } map {
+              case (data ~ cross ~ champions ~ bugData) => NoCache {
                 NoIframe { // can be heavy as TV reloads for each game
-                  Ok(html.tv.index(channel, champions, pov, data, cross, flip, history))
+                  Ok(html.tv.index(channel, champions, pov, data, cross, flip, history, bugData = bugData))
                 }
               }
             }
