@@ -74,7 +74,7 @@ function makeSlider(ctrl: BoardCtrl, el: HTMLElement) {
   window.lichess.slider().done(() => {
     $(el).slider({
       orientation: 'horizontal',
-      min: 100,
+      min: 50,
       max: 200,
       range: 'min',
       step: 1,

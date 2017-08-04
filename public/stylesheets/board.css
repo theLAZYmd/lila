@@ -194,7 +194,7 @@ div.lichess_game {
 }
 div.lichess_game div.lichess_board_wrap {
   position: relative;
-  flex: 0 0 512px;
+  flex: 0 0 256px;
 }
 body.blind_mode .cg-board-wrap {
   display: none;
@@ -204,6 +204,7 @@ div.lichess_game div.lichess_ground {
   flex-flow: column nowrap;
   justify-content: center;
   padding-left: 15px;
+  padding-right:15px;
   width: 242px;
 }
 div.lichess_game div.lichess_ground.for_bot h1 {

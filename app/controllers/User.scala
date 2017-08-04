@@ -2,16 +2,16 @@ package controllers
 
 import play.api.libs.json._
 import play.api.mvc._
-import scala.concurrent.duration._
 
+import scala.concurrent.duration._
 import lila.api.BodyContext
 import lila.app._
 import lila.app.mashup.GameFilterMenu
 import lila.common.paginator.Paginator
-import lila.common.{ IpAddress, HTTPRequest }
-import lila.game.{ GameRepo, Game => GameModel }
+import lila.common.{ HTTPRequest, IpAddress }
+import lila.game.{ GameRepo, Pov, Game => GameModel }
 import lila.rating.PerfType
-import lila.user.{ User => UserModel, UserRepo }
+import lila.user.{ UserRepo, User => UserModel }
 import views._
 
 object User extends LilaController {
@@ -25,7 +25,9 @@ object User extends LilaController {
       (GameRepo lastPlayedPlaying user) orElse
         (GameRepo lastPlayed user) flatMap {
           _.fold(fuccess(Redirect(routes.User.show(username)))) { pov =>
-            Round.watch(pov, userTv = user.some)
+            (pov.bugGameId.fold(fuccess(None: Option[Pov]))(bgId => GameRepo.pov(bgId, !pov.color))).flatMap { bugPovOp =>
+              Round.watch(pov, userTv = user.some, bugPovOp = bugPovOp)
+            }
           }
         }
     }

@@ -485,7 +485,7 @@ lichess.topMenuIntent = function() {
         } else {
           $boardWrap.css("height", px(512 * zoom));
           $lichessGame.css({
-            height: px(512 * zoom),
+            height: px(Math.max(512 * zoom,450)),
             paddingTop: px(0)
           });
           $('#chat').css("height", px(335 + 510 * (zoom - 1)));
@@ -500,7 +500,7 @@ lichess.topMenuIntent = function() {
 
         if ($lichessGame.length) {
           // if on a board with a game
-          $('body > .content').css("margin-left", 'calc(50% - ' + px(246.5 + 256 * zoom) + ')');
+          $('body > .content').css("margin-left", 'calc(50% - ' + px(459 + 371.4 * zoom) + ')');
         }
 
         // reflow charts
@@ -508,8 +508,9 @@ lichess.topMenuIntent = function() {
 
         document.body.dispatchEvent(new Event('chessground.resize'));
       };
-      lichess.pubsub.on('reset_zoom', function() {
-        if (currentZoom > 1 || $('body').data('zoom') > 100) setZoom(currentZoom);
+      lichess.pubsub.on('reset_zoom', function(zVal) {
+          if (zVal && zVal > 0.5) setZoom(zVal);
+          if (currentZoom > 0.5 || $('body').data('zoom') > 50) setZoom(currentZoom);
       });
 
       // dasher
