@@ -106,7 +106,6 @@ export function main(ctrl: any): VNode {
     )
   
     //$('body > .content').css("margin-left", 'calc(50% - ' + '830px' + ')');
-    window.lichess.pubsub.emit('reset_zoom')(0.75);
   }
     
   return h('div.round.cg-512', [
