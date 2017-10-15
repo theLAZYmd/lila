@@ -29,8 +29,10 @@ trait PairingSystem {
   def createPairings(
     tournament: Tournament,
     users: WaitingUsers,
-    ranking: Ranking
-  ): Fu[Pairings]
+    ranking: Ranking,
+    relationApi: lila.relation.RelationApi,
+    activeUserIds: Set[String]
+  ): Fu[(Pairings, Option[Map[String, String]])]
 }
 
 trait Score {

@@ -24,6 +24,18 @@ export const renderers: Renderers = {
     ]),
     text: n => userFullName(n.content.invitedBy) + ' invited you to « ' + n.content.studyName + ' ».'
   },
+  invitedPartner: {
+    html: n => {
+      var text = getPartnerText(n);
+      return generic(n, undefined, '"', [
+      h('span', [
+        h('strong', userFullName(n.content.invitedBy)),
+        drawTime(n)
+      ]),
+      h('span', text)
+    ])},
+    text: getPartnerText
+  },
   privateMessage: {
     html: n => generic(n, "/inbox/" + n.content.thread.id + '#bottom', 'c', [
       h('span', [
@@ -209,4 +221,17 @@ function drawTime(n: Notification) {
 function userFullName(u?: LightUser) {
   if (!u) return 'Anonymous';
   return u.title ? u.title + ' ' + u.name : u.name;
+}
+
+function getPartnerText(n: Notification) {
+  var text = userFullName(n.content.invitedBy);
+  if (n.content.canceled){
+    text += ' unpartnered you.'
+  }
+  else {
+    if (n.content.requested) text += ' accepted your request to partner.';
+    else text += ' invited you to partner for bughouse.';
+  }
+    
+  return text;
 }

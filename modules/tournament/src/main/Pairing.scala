@@ -53,6 +53,8 @@ case class Pairing(
     colorOf(userId) map { PovRef(gameId, _) }
 
   def similar(other: Pairing) = other.contains(user1, user2)
+
+  def reverseColors = copy(user1 = user2, user2 = user1)
 }
 
 private[tournament] object Pairing {

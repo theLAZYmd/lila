@@ -55,9 +55,11 @@ object User extends LilaController {
         crosstable <- ctx.userId ?? { Env.game.crosstableApi(user.id, _) }
         followable <- ctx.isAuth ?? { Env.pref.api.followable(user.id) }
         relation <- ctx.userId ?? { relationApi.fetchRelation(_, user.id) }
+        partnerRelation <- ctx.userId ?? { relationApi.fetchPartnerRelation(_, user.id) }
+        invPartnerRelation <- ctx.userId ?? { relationApi.fetchPartnerRelation(user.id, _) }
         res <- negotiate(
           html = !ctx.is(user) ?? GameRepo.lastPlayedPlaying(user) map { pov =>
-          Ok(html.user.mini(user, pov, blocked, followable, relation, crosstable))
+          Ok(html.user.mini(user, pov, blocked, followable, relation, crosstable, partnerRelation, invPartnerRelation))
             .withHeaders(CACHE_CONTROL -> "max-age=5")
         },
           api = _ => {
@@ -130,13 +132,15 @@ object User extends LilaController {
     _ <- Env.tournament.cached.nameCache preloadMany pag.currentPageResults.flatMap(_.tournamentId)
     _ <- Env.team.cached.nameCache preloadMany info.teamIds
     relation <- ctx.userId ?? { relationApi.fetchRelation(_, u.id) }
+    partnerRelation <- ctx.userId ?? { relationApi.fetchPartnerRelation(_, u.id) }
+    invPartnerRelation <- ctx.userId ?? { relationApi.fetchPartnerRelation(u.id, _) }
     notes <- ctx.me ?? { me =>
       relationApi fetchFriends me.id flatMap { env.noteApi.get(u, me, _, isGranted(_.ModNote)) }
     }
     followable <- ctx.isAuth ?? { Env.pref.api followable u.id }
     blocked <- ctx.userId ?? { relationApi.fetchBlocks(u.id, _) }
     searchForm = GameFilterMenu.searchForm(userGameSearch, filters.current)(ctx.body)
-  } yield html.user.show(u, info, pag, filters, searchForm, relation, notes, followable, blocked)
+  } yield html.user.show(u, info, pag, filters, searchForm, relation, notes, followable, blocked, partnerRelation, invPartnerRelation)
 
   private val UserGamesRateLimitPerIP = new lila.memo.RateLimit[IpAddress](
     credits = 500,

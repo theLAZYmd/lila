@@ -39,6 +39,13 @@ private final class NotificationRepo(val coll: Coll) {
       "content.studyId" -> studyId
     ) ++ hasOldOrUnread)
 
+  def hasRecentPartnerInvitation(userId: Notification.Notifies, invitedBy: String): Fu[Boolean] =
+    coll.exists($doc(
+      "notifies" -> userId,
+      "content.type" -> "invitedPartner",
+      "content.invitedBy" -> invitedBy
+    ) ++ hasOldOrUnread)
+
   def hasRecentNotificationsInThread(userId: Notification.Notifies, topicId: MentionedInThread.TopicId): Fu[Boolean] =
     coll.exists($doc(
       "notifies" -> userId,

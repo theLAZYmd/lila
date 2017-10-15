@@ -1,4 +1,4 @@
-@(userId: String, relation: Option[lila.relation.Relation], followable: Boolean, blocked: Boolean, signup: Boolean = false)(implicit ctx: Context)
+@(userId: String, relation: Option[lila.relation.Relation], followable: Boolean, blocked: Boolean, signup: Boolean = false, partnerRelation: Option[lila.relation.Relation] = None, invPartnerRelation: Option[lila.relation.Relation] = None)(implicit ctx: Context)
 
 <div class="relation_actions">
   @ctx.userId.map { myId =>
@@ -31,6 +31,42 @@
     <span data-icon="k" class="base">&nbsp;@trans.blocked()</span>
     <span data-icon="k" class="hover">&nbsp;@trans.unblock()</span>
   </a>
+  }
+  }
+  @partnerRelation match{
+  case None => {
+    @invPartnerRelation match{
+    case None => {
+      @if(!blocked) {
+      <a class="icon button relation hint--bottom"
+            href="@routes.Relation.partner(userId)"
+            data-hint="@trans.partner()"><span data-icon="&quot"></span></a>
+  }
+  }
+    case Some(_) => {
+      @if(!blocked) {
+      <a class="icon button relation hint--bottom"
+        href="@routes.Relation.partner(userId)"
+        ><span data-icon="&quot" class="base">&nbsp;@trans.reqPartner()</span></a>
+  }
+  }
+  }
+  }
+  case Some(_) => {
+    @invPartnerRelation match{
+      case None => {
+      <a class="button relation hover_text" href="@routes.Relation.unpartner(userId)">
+        <span data-icon="&quot" class="base">&nbsp;@trans.partnerReq()</span>
+        <span data-icon="&quot" class="hover">&nbsp;@trans.unpartner()</span>
+      </a>
+  }
+      case Some(_) => {
+        <a class="button relation hover_text" href="@routes.Relation.unpartner(userId)">
+          <span data-icon="&quot" class="base">&nbsp;@trans.partnered()</span>
+          <span data-icon="&quot" class="hover">&nbsp;@trans.unpartner()</span>
+        </a>
+  }
+  }
   }
   }
   }

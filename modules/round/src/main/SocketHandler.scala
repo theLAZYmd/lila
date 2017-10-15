@@ -40,7 +40,6 @@ private[round] final class SocketHandler(
     me: Option[User],
     bugId: Option[String]
   ): Handler.Controller = {
-
     def send(msg: Any) { roundMap ! Tell(gameId, msg) }
     def bugSend(msg: Any) { bugId.foreach(bgid => roundMap ! Tell(bgid, msg)) }
 

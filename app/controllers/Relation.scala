@@ -1,33 +1,37 @@
 package controllers
 
 import play.api.libs.json.Json
-
 import lila.api.Context
 import lila.app._
-import lila.common.paginator.{ Paginator, AdapterLike, PaginatorJson }
+import lila.common.paginator.{ AdapterLike, Paginator, PaginatorJson }
 import lila.relation.Related
-import lila.user.{ User => UserModel, UserRepo }
+import lila.user.{ UserRepo, User => UserModel }
 import views._
 
 object Relation extends LilaController {
 
   private def env = Env.relation
+  private def notifyApi = lila.notify.Env.current.api
 
   private def renderActions(userId: String, mini: Boolean)(implicit ctx: Context) =
     (ctx.userId ?? { env.api.fetchRelation(_, userId) }) zip
+      (ctx.userId ?? { env.api.fetchPartnerRelation(_, userId) }) zip
+      (ctx.userId ?? { env.api.fetchPartnerRelation(userId, _) }) zip
       (ctx.isAuth ?? { Env.pref.api followable userId }) zip
       (ctx.userId ?? { env.api.fetchBlocks(userId, _) }) flatMap {
-        case relation ~ followable ~ blocked => negotiate(
-          html = fuccess(Ok(mini.fold(
-            html.relation.mini(userId, blocked = blocked, followable = followable, relation = relation),
-            html.relation.actions(userId, relation = relation, blocked = blocked, followable = followable)
-          ))),
-          api = _ => fuccess(Ok(Json.obj(
-            "followable" -> followable,
-            "following" -> relation.contains(true),
-            "blocking" -> relation.contains(false)
-          )))
-        )
+        case relation ~ partnerRel ~ invPartnerRel ~ followable ~ blocked => {
+          negotiate(
+            html = fuccess(Ok(mini.fold(
+              html.relation.mini(userId, blocked = blocked, followable = followable, relation = relation, partnerRelation = partnerRel, invPartnerRelation = invPartnerRel),
+              html.relation.actions(userId, relation = relation, blocked = blocked, followable = followable, partnerRelation = partnerRel, invPartnerRelation = invPartnerRel)
+            ))),
+            api = _ => fuccess(Ok(Json.obj(
+              "followable" -> followable,
+              "following" -> relation.contains(true),
+              "blocking" -> relation.contains(false)
+            )))
+          )
+        }
       }
 
   def follow(userId: String) = Auth { implicit ctx => me =>
@@ -36,6 +40,45 @@ object Relation extends LilaController {
 
   def unfollow(userId: String) = Auth { implicit ctx => me =>
     env.api.unfollow(me.id, UserModel normalize userId).nevermind >> renderActions(userId, getBool("mini"))
+  }
+
+  def partner(userId: String) = Auth { implicit ctx => me =>
+    for {
+      invPartRel <- ctx.userId ?? { env.api.fetchPartnerRelation(userId, _) }
+      toCancel <- ctx.userId ?? { env.api.fetchPartner(_) }
+      invCancelRel <- (toCancel zip ctx.userId).headOption ?? { p => env.api.fetchPartnerRelation(p._1, p._2) }
+      _ <- env.api.partner(me.id, UserModel normalize userId).nevermind
+      render <- renderActions(userId, getBool("mini"))
+    } yield {
+      invPartRel match {
+        case None => ctx.userId.foreach(notify(_, userId, false))
+        case Some(_) => ctx.userId.foreach(notify(_, userId, true))
+      }
+      invCancelRel match {
+        case None => Unit
+        case Some(_) => (toCancel zip ctx.userId).headOption.foreach(p =>
+          notify(p._2, p._1, false, true))
+      }
+      render
+    }
+  }
+
+  def unpartner(userId: String) = Auth { implicit ctx => me =>
+    for {
+      invPartRel <- ctx.userId ?? { env.api.fetchPartnerRelation(userId, _) }
+      _ <- env.api.unpartner(me.id, UserModel normalize userId).nevermind
+      render <- renderActions(userId, getBool("mini"))
+    } yield {
+      invPartRel match {
+        case None => Unit
+        case Some(_) => ctx.userId.foreach(notify(_, userId, false, true))
+      }
+      render
+    }
+  }
+
+  def decPartner(userId: String) = Auth { implicit ctx => me =>
+    removeNotification(userId, me.id)
   }
 
   def block(userId: String) = Auth { implicit ctx => me =>
@@ -114,4 +157,18 @@ object Relation extends LilaController {
         }.sequenceFu
       }
     }
+
+  private def notify(invitedBy: String, invitee: String, requested: Boolean, canceled: Boolean = false): Funit = {
+    import lila.notify.{ Notification, InvitedToPartner }
+    notifyApi addNotification Notification.make(
+      Notification.Notifies(invitee),
+      InvitedToPartner(invitedBy, requested, canceled)
+    )
+  }
+
+  private def removeNotification(invitedBy: String, invitee: String): Funit = {
+    import lila.notify.{ Notification, InvitedToPartner }
+    import lila.db.dsl.$doc
+    notifyApi.remove(Notification.Notifies(invitee), $doc("invitedBy" -> invitedBy))
+  }
 }

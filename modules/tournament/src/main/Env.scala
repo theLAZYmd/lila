@@ -28,7 +28,8 @@ final class Env(
     historyApi: lila.history.HistoryApi,
     trophyApi: lila.user.TrophyApi,
     notifyApi: lila.notify.NotifyApi,
-    scheduler: lila.common.Scheduler
+    scheduler: lila.common.Scheduler,
+    relationApi: lila.relation.RelationApi
 ) {
 
   private val startsAtMillis = nowMillis
@@ -93,7 +94,8 @@ final class Env(
     indexLeaderboard = leaderboardIndexer.indexOne _,
     roundMap = roundMap,
     asyncCache = asyncCache,
-    standingChannel = standingChannel
+    standingChannel = standingChannel,
+    relationApi = relationApi
   )
 
   lazy val crudApi = new crud.CrudApi
@@ -209,6 +211,7 @@ object Env {
     historyApi = lila.history.Env.current.api,
     trophyApi = lila.user.Env.current.trophyApi,
     notifyApi = lila.notify.Env.current.api,
-    scheduler = lila.common.PlayApp.scheduler
+    scheduler = lila.common.PlayApp.scheduler,
+    relationApi = lila.relation.Env.current.api
   )
 }

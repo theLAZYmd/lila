@@ -69,6 +69,8 @@ private object BSONHandlers {
           $doc("mentionedBy" -> mentionedBy, "topic" -> topic, "topicId" -> topicId, "category" -> category, "postId" -> postId)
         case InvitedToStudy(invitedBy, studyName, studyId) =>
           $doc("invitedBy" -> invitedBy, "studyName" -> studyName, "studyId" -> studyId)
+        case InvitedToPartner(invitedBy, requested, canceled) =>
+          $doc("invitedBy" -> invitedBy, "requested" -> requested, "canceled" -> canceled)
         case p: PrivateMessage => PrivateMessageHandler.write(p)
         case q: QaAnswer => QaAnswerHandler.write(q)
         case t: TeamJoined => TeamJoinedHandler.write(t)
@@ -103,9 +105,18 @@ private object BSONHandlers {
       InvitedToStudy(invitedBy, studyName, studyId)
     }
 
+    private def readInvitedPartnerNotification(reader: Reader): NotificationContent = {
+      val invitedBy = reader.get[String]("invitedBy")
+      val requested = reader.get[Boolean]("requested")
+      val canceled = reader.get[Boolean]("canceled")
+
+      InvitedToPartner(invitedBy, requested, canceled)
+    }
+
     def reads(reader: Reader): NotificationContent = reader.str("type") match {
       case "mention" => readMentionedNotification(reader)
       case "invitedStudy" => readInvitedStudyNotification(reader)
+      case "invitedPartner" => readInvitedPartnerNotification(reader)
       case "privateMessage" => PrivateMessageHandler read reader.doc
       case "qaAnswer" => QaAnswerHandler read reader.doc
       case "teamJoined" => TeamJoinedHandler read reader.doc

@@ -1,4 +1,4 @@
-@(u: User, playing: Option[Pov], blocked: Boolean, followable: Boolean, rel: Option[lila.relation.Relation], crosstable: Option[lila.game.Crosstable])(implicit ctx: Context)
+@(u: User, playing: Option[Pov], blocked: Boolean, followable: Boolean, rel: Option[lila.relation.Relation], crosstable: Option[lila.game.Crosstable], partnerRel: Option[lila.relation.Relation], invPartnerRel: Option[lila.relation.Relation])(implicit ctx: Context)
 <div class="title">
   <div>
     @u.profileOrDefault.countryInfo.map {
@@ -61,7 +61,7 @@
         </a>
       </td>
       }
-      <td class="relation_actions">@relation.mini(u.id, blocked, followable, rel)</td>
+      <td class="relation_actions">@relation.mini(u.id, blocked, followable, rel, partnerRel, invPartnerRel)</td>
     </tr>
   </tbody>
 </table>

@@ -1,4 +1,4 @@
-@(u: User, info: lila.app.mashup.UserInfo, games: Paginator[Game], filters: lila.app.mashup.GameFilterMenu, searchForm: Form[_], rel: Option[lila.relation.Relation], notes: List[lila.user.Note], followable: Boolean, blocked: Boolean)(implicit ctx: Context)
+@(u: User, info: lila.app.mashup.UserInfo, games: Paginator[Game], filters: lila.app.mashup.GameFilterMenu, searchForm: Form[_], rel: Option[lila.relation.Relation], notes: List[lila.user.Note], followable: Boolean, blocked: Boolean, partnerRel: Option[lila.relation.Relation], invPartnerRel: Option[lila.relation.Relation])(implicit ctx: Context)
 
 @evenMoreJs = {
 @if(!u.lame || ctx.is(u) || isGranted(_.UserSpy)) {
@@ -72,7 +72,7 @@ description = describeUser(u)).some) {
       }
       <a class="button hint--bottom-left" href="@routes.User.tv(u.username)" data-hint="@trans.watchGames()"><span data-icon="1"></span></a>
       @if(ctx.isAuth && !ctx.is(u)) {
-      @relation.actions(u.id, relation = rel, followable = followable, blocked = blocked)
+      @relation.actions(u.id, relation = rel, followable = followable, blocked = blocked, partnerRelation = partnerRel, invPartnerRelation = invPartnerRel)
       @NotForKids {
       <a data-hint="@trans.reportXToModerators(u.username)" class="button hint--bottom-left" href="@routes.Report.form?username=@u.username">
         <span data-icon="!"></span>

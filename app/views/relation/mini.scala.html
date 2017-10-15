@@ -1,4 +1,4 @@
-@(userId: String, blocked: Boolean, followable: Boolean, relation: Option[lila.relation.Relation] = None)(implicit ctx: Context)
+@(userId: String, blocked: Boolean, followable: Boolean, relation: Option[lila.relation.Relation] = None, partnerRelation: Option[lila.relation.Relation] = None, invPartnerRelation: Option[lila.relation.Relation] = None)(implicit ctx: Context)
 
 @relation match {
 case None if followable && !blocked=> {
@@ -18,4 +18,35 @@ case Some(false) => {
 }
 case _ => {
 }
+}
+
+@partnerRelation match{
+  case None => {
+    @invPartnerRelation match{
+      case None => {
+        <a class="relation button" href="@routes.Relation.partner(userId)?mini=1">
+          <span data-icon="&quot">&nbsp;@trans.partner()</span>
+        </a>
+      }
+      case Some(_) => {
+        <a class="relation button" href="@routes.Relation.partner(userId)?mini=1">
+          <span data-icon="&quot">&nbsp;@trans.reqPartner()</span>
+        </a>
+      }
+    }
+  }
+  case Some(_) => {
+    @invPartnerRelation match{
+      case None => {
+        <a class="relation button hint--bottom" data-hint="@trans.unpartner()" class="hover_text" href="@routes.Relation.unpartner(userId)?mini=1">
+          <span data-icon="&quot">&nbsp;@trans.partnerReq()</span>
+        </a>
+      }
+      case Some(_) => {
+        <a class="relation button hint--bottom" data-hint="@trans.unpartner()" class="hover_text" href="@routes.Relation.unpartner(userId)?mini=1">
+          <span data-icon="&quot">&nbsp;@trans.partnered()</span>
+        </a>
+      }
+    }
+  }
 }

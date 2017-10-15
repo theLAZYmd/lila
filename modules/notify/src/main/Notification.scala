@@ -63,6 +63,8 @@ object InvitedToStudy {
   case class StudyId(value: String) extends AnyVal with StringValue
 }
 
+case class InvitedToPartner(invitedBy: String, requested: Boolean, canceled: Boolean) extends NotificationContent("invitedPartner")
+
 case class PrivateMessage(
   senderId: PrivateMessage.SenderId,
   thread: PrivateMessage.Thread,

@@ -36,6 +36,62 @@ private[tournament] case class WaitingUsers(
     else all
   }
 
+  def bugEvenNumber(partnersOp: Option[Map[String, String]]): List[User.ID] = {
+    partnersOp match {
+      case Some(partners) => {
+        bugDropMod(hash.toList.sortBy(-_._2.getMillis).map(_._1), partners)
+      }
+      case None => {
+        val mod = size % 4
+        mod match {
+          case 0 => all
+          case _ => hash.toList.sortBy(-_._2.getMillis).drop(mod).map(_._1)
+        }
+      }
+    }
+  }
+
+  def bugDropMod(list: List[User.ID], partners: Map[String, String]): List[User.ID] = {
+    val mod = list.size % 4
+    mod % 4 match {
+      case 0 => list
+      case 1 => popFirstIdNonMapMatch(list, partners)._1
+      case _ => {
+        partners.get(list.head) match {
+          case None => bugDropMod(list.tail, partners)
+          case Some(res) => bugDropMod(removeFirstIdMatch(list.tail, res), partners)
+        }
+      }
+    }
+  }
+
+  def popFirstIdNonMapMatch(
+    list: List[User.ID],
+    map: Map[String, String]
+  ): (List[User.ID], Option[User.ID]) = list match {
+    case Nil => (Nil, None)
+    case head :: tail => {
+      if (!map.contains(head)) (tail, Some(head))
+      else {
+        val res = popFirstIdNonMapMatch(tail, map)
+        (head :: res._1, res._2)
+      }
+    }
+  }
+
+  def removeFirstIdMatch(
+    list: List[User.ID],
+    id: String
+  ): (List[User.ID]) = list match {
+    case Nil => Nil
+    case head :: tail => {
+      if (id == head) tail
+      else {
+        head :: removeFirstIdMatch(tail, id)
+      }
+    }
+  }
+
   def waitSecondsOf(userId: User.ID) = hash get userId map { d =>
     nowSeconds - d.getSeconds
   }
@@ -60,6 +116,8 @@ private[tournament] case class WaitingUsers(
   def intersect(us: Set[User.ID]) = copy(hash = hash filterKeys us.contains)
 
   def diff(us: Set[User.ID]) = copy(hash = hash filterKeys { k => !us.contains(k) })
+
+  def filter(op: User.ID => Boolean) = copy(hash = hash filterKeys op)
 
   override def toString = all.toString
 }

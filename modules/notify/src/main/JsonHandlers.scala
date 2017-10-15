@@ -22,6 +22,11 @@ final class JSONHandlers(getLightUser: LightUser.GetterSync) {
           "studyName" -> studyName.value,
           "studyId" -> studyId.value
         )
+        case InvitedToPartner(invitedBy, requested, canceled) => Json.obj(
+          "invitedBy" -> getLightUser(invitedBy),
+          "requested" -> requested,
+          "canceled" -> canceled
+        )
         case PrivateMessage(senderId, thread, text) => Json.obj(
           "sender" -> getLightUser(senderId.value),
           "thread" -> privateMessageThreadWrites.writes(thread),
