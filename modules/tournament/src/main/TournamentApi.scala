@@ -73,41 +73,16 @@ final class TournamentApi(
     Sequencing(oldTour.id)(TournamentRepo.startedById) { tour =>
       cached ranking tour flatMap { ranking =>
         tour.system.pairingSystem.createPairings(tour, users, ranking, relationApi, activeUserIds).flatMap {
-          case (Nil, _) => funit
-          case (pairings, _) if nowMillis - startAt > 1200 =>
+          case Nil => funit
+          case pairings if nowMillis - startAt > 1200 =>
             pairingLogger.warn(s"Give up making https://lichess.org/tournament/${tour.id} ${pairings.size} pairings in ${nowMillis - startAt}ms")
             lila.mon.tournament.pairing.giveup()
             funit
-          case (pairings, partnersOp) => UserRepo.idsMap(pairings.flatMap(_.users)) flatMap { users =>
-            (oldTour.variant, partnersOp) match {
-              case (chess.variant.Bughouse, Some(partners)) => {
-                var pairingsVar = pairings
-                var bugOrderedPairings: Pairings = Nil
+          case pairings => UserRepo.idsMap(pairings.flatMap(_.users)) flatMap { users =>
+            oldTour.variant match {
+              case chess.variant.Bughouse => {
 
-                partners.foreach {
-                  case (partner1, partner2) => {
-                    popFirstIdMatch(pairingsVar, partner1) match {
-                      case (tempPairings, Some(matchedPairing1)) => {
-                        popFirstIdMatch(tempPairings, partner2) match {
-                          case (newPairings, Some(matchedPairing2)) => {
-                            var mp1 = matchedPairing1
-                            if (matchedPairing1.users.indexOf(partner1) ==
-                              matchedPairing2.users.indexOf(partner2)) mp1 = mp1.reverseColors
-                            pairingsVar = newPairings
-                            bugOrderedPairings = mp1 :: matchedPairing2 :: bugOrderedPairings
-                          }
-                          case _ =>
-                            pairingLogger.warn(s"Only one partner has a pairing")
-                        }
-                      }
-                      case _ => Unit
-                    }
-                  }
-                }
-
-                pairingsVar = bugOrderedPairings ::: pairingsVar
-
-                pairingsVar.grouped(2).toList.flatMap {
+                pairings.grouped(2).toList.flatMap {
                   doublePairing =>
                     if (doublePairing.length == 2) {
                       val pairing1 = doublePairing.head
@@ -500,15 +475,4 @@ final class TournamentApi(
 
   private def sendTo(tourId: String, msg: Any): Unit =
     socketHub ! Tell(tourId, msg)
-
-  def popFirstIdMatch(list: List[Pairing], id: String): (List[Pairing], Option[Pairing]) = list match {
-    case Nil => (Nil, None)
-    case head :: tail => {
-      if (head.user1 == id || head.user2 == id) (tail, Some(head))
-      else {
-        val res = popFirstIdMatch(tail, id)
-        (head :: res._1, res._2)
-      }
-    }
-  }
 }

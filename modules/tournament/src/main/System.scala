@@ -32,7 +32,7 @@ trait PairingSystem {
     ranking: Ranking,
     relationApi: lila.relation.RelationApi,
     activeUserIds: Set[String]
-  ): Fu[(Pairings, Option[Map[String, String]])]
+  ): Fu[Pairings]
 }
 
 trait Score {

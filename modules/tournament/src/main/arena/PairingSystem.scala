@@ -23,7 +23,7 @@ private[tournament] object PairingSystem extends AbstractPairingSystem {
 
   // if waiting users can make pairings
   // then pair all users
-  def createPairings(tour: Tournament, usersVal: WaitingUsers, ranking: Ranking, relationApi: lila.relation.RelationApi, activeUserIds: Set[String]): Fu[(Pairings, Option[Map[String, String]])] = {
+  def createPairings(tour: Tournament, usersVal: WaitingUsers, ranking: Ranking, relationApi: lila.relation.RelationApi, activeUserIds: Set[String]): Fu[Pairings] = {
     for {
       lastOpponents <- PairingRepo.lastOpponents(tour.id, usersVal.all, Math.min(120, usersVal.size * 4))
       onlyTwoActivePlayers <- (tour.nbPlayers > 20).fold(
@@ -49,10 +49,10 @@ private[tournament] object PairingSystem extends AbstractPairingSystem {
         case Nil => fuccess(Nil)
         case _ => makePreps(data, users.all)
       }
-      pairings <- prepsToPairings(preps)
-    } yield (pairings, partnersOp)
+      pairings <- prepsToPairings(preps, partnersOp)
+    } yield pairings
   }.chronometer.logIfSlow(500, pairingLogger) { pairings =>
-    s"createPairings ${url(tour.id)} ${pairings._1.size} pairings"
+    s"createPairings ${url(tour.id)} ${pairings} pairings"
   }.result
 
   private def evenOrAll(data: Data, users: WaitingUsers) =
@@ -93,7 +93,38 @@ private[tournament] object PairingSystem extends AbstractPairingSystem {
   private def prepsToPairings(preps: List[Pairing.Prep], partnersOp: Option[Map[String, String]] = None): Fu[List[Pairing]] =
     if (preps.size < 50) preps.map { prep =>
       UserRepo.firstGetsWhite(prep.user1.some, prep.user2.some) map prep.toPairing
-    }.sequenceFu
+    }.sequenceFu.map { pairings =>
+      partnersOp match {
+        case None => pairings
+        case Some(partners) =>
+          var pairingsVar = pairings
+          var bugOrderedPairings: Pairings = Nil
+
+          bugColorFlipParity.fold(partners.toList.reverse, partners.toList).foreach {
+            case (partner1, partner2) => {
+              popFirstIdMatch(pairingsVar, partner1) match {
+                case (tempPairings, Some(matchedPairing1)) => {
+                  popFirstIdMatch(tempPairings, partner2) match {
+                    case (newPairings, Some(matchedPairing2)) => {
+                      var mp1 = matchedPairing1
+                      if (matchedPairing1.users.indexOf(partner1) ==
+                        matchedPairing2.users.indexOf(partner2)) mp1 = mp1.reverseColors
+                      pairingsVar = newPairings
+                      bugOrderedPairings = mp1 :: matchedPairing2 :: bugOrderedPairings
+                    }
+                    case _ =>
+                      pairingLogger.warn(s"Only one partner has a pairing")
+                  }
+                }
+                case _ => Unit
+              }
+            }
+          }
+
+          if (pairings.nonEmpty) bugColorFlipParity = !bugColorFlipParity
+          bugOrderedPairings ::: pairingsVar
+      }
+    }
     else fuccess {
       preps.map(_ toPairing Random.nextBoolean)
     }
@@ -125,7 +156,8 @@ private[tournament] object PairingSystem extends AbstractPairingSystem {
         if (players.length % 4 != 0) pairingLogger.warn(s"Bughouse: Number of players mod 4 is non-zero!")
         players.partition(rp => partClosed.contains(rp.player.userId)) match {
           case (parts, singles) => {
-            parts.partition(rp => uniqueParts.contains(rp.player.userId)) match {
+            if (parts.isEmpty) pairingOp(tour, singles, data)
+            else parts.partition(rp => uniqueParts.contains(rp.player.userId)) match {
               case (leftPartners, rightPartners) => {
                 singles.splitAt(singles.length / 2) match {
                   case (leftSingles, rightSingles) => {
@@ -174,6 +206,19 @@ private[tournament] object PairingSystem extends AbstractPairingSystem {
 
   private def closeMap(mapping: Map[String, String], set: Set[String]): Map[String, String] = //closes map wrt a set. e.g. removes entries of the mapping that take it outside the given set
     mapping.filter(entry => set.contains(entry._2))
+
+  private var bugColorFlipParity = true
+
+  private def popFirstIdMatch(list: List[Pairing], id: String): (List[Pairing], Option[Pairing]) = list match {
+    case Nil => (Nil, None)
+    case head :: tail => {
+      if (head.user1 == id || head.user2 == id) (tail, Some(head))
+      else {
+        val res = popFirstIdMatch(tail, id)
+        (head :: res._1, res._2)
+      }
+    }
+  }
 
   private[arena] def url(tourId: String) = s"https://lichess.org/tournament/$tourId"
 
