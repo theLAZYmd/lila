@@ -34,7 +34,7 @@ object Pref extends LilaController {
   }
 
   def setZoom = Action { implicit req =>
-    val zoom = getInt("v", req) | 100
+    val zoom = getInt("v", req) | 75
     Ok(()).withCookies(LilaCookie.session("zoom", zoom.toString))
   }
 
