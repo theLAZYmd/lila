@@ -132,7 +132,7 @@ object Trophy {
       key = "halloweeneeneenleft",
       name = "HalloweeneeneenLeft",
       icon = none,
-      url = none,
+      url = "//bughousetest.com/tournament/0L8mg5NK".some,
       none,
       order = 103
     )
@@ -141,7 +141,7 @@ object Trophy {
       key = "halloweeneeneenright",
       name = "HalloweeneeneenRight",
       icon = none,
-      url = none,
+      url = "//bughousetest.com/tournament/0L8mg5NK".some,
       none,
       order = 104
     )
