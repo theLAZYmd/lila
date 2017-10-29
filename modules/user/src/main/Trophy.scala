@@ -128,6 +128,24 @@ object Trophy {
       order = 102
     )
 
+    object HalloweeneeneenLeft extends Kind(
+      key = "halloweeneeneenleft",
+      name = "HalloweeneeneenLeft",
+      icon = none,
+      url = none,
+      none,
+      order = 103
+    )
+
+    object HalloweeneeneenRight extends Kind(
+      key = "halloweeneeneenright",
+      name = "HalloweeneeneenRight",
+      icon = none,
+      url = none,
+      none,
+      order = 104
+    )
+
     val all = List(
       ZugMiracle,
       WayOfBerserk,
@@ -135,7 +153,9 @@ object Trophy {
       MarathonWinner, MarathonTopTen, MarathonTopFifty, MarathonTopHundred,
       BongcloudWarrior,
       Developer, Moderator,
-      Streamer
+      Streamer,
+      HalloweeneeneenLeft,
+      HalloweeneeneenRight
     )
     def byKey(key: String) = all find (_.key == key)
   }
