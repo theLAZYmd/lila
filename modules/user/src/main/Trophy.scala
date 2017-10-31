@@ -130,7 +130,7 @@ object Trophy {
 
     object HalloweeneeneenLeft extends Kind(
       key = "halloweeneeneenleft",
-      name = "HalloweeneeneenLeft",
+      name = "Halloweeneeneen Tournament Champion",
       icon = none,
       url = "//bughousetest.com/tournament/0L8mg5NK".some,
       none,
@@ -139,11 +139,29 @@ object Trophy {
 
     object HalloweeneeneenRight extends Kind(
       key = "halloweeneeneenright",
-      name = "HalloweeneeneenRight",
+      name = "Halloweeneeneen Tournament Champion",
       icon = none,
       url = "//bughousetest.com/tournament/0L8mg5NK".some,
       none,
       order = 104
+    )
+
+    object HalloweeneeneenLeft2 extends Kind(
+      key = "halloweeneeneenleft2",
+      name = "Halloweeneeneen Tournament Runner-up",
+      icon = none,
+      url = "//bughousetest.com/tournament/0L8mg5NK".some,
+      none,
+      order = 105
+    )
+
+    object HalloweeneeneenRight2 extends Kind(
+      key = "halloweeneeneenright2",
+      name = "Halloweeneeneen Tournament Runner-up",
+      icon = none,
+      url = "//bughousetest.com/tournament/0L8mg5NK".some,
+      none,
+      order = 106
     )
 
     val all = List(
@@ -154,8 +172,7 @@ object Trophy {
       BongcloudWarrior,
       Developer, Moderator,
       Streamer,
-      HalloweeneeneenLeft,
-      HalloweeneeneenRight
+      HalloweeneeneenLeft, HalloweeneeneenRight, HalloweeneeneenLeft2, HalloweeneeneenRight2
     )
     def byKey(key: String) = all find (_.key == key)
   }
