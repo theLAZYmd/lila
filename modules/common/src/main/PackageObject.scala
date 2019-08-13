@@ -1,5 +1,7 @@
 package lila
 
+import chess.{ Centis }
+
 import scala.concurrent.duration.{ Duration, FiniteDuration, MILLISECONDS }
 import scala.concurrent.Future
 

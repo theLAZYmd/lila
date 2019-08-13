@@ -1,6 +1,6 @@
 package lila.common
 
-import chess.Centis
+import chess.{ Centis }
 
 trait Iso[A, B] {
   val from: A => B
@@ -31,5 +31,5 @@ object Iso {
 
   implicit val emailAddressIso = string[EmailAddress](EmailAddress.apply, _.value)
 
-  implicit val centisIso = Iso.int[Centis](Centis.apply, _.centis)
+  implicit val centisIso = Iso.int[chess.Centis](chess.Centis.apply, _.centis)
 }

@@ -1,0 +1,9 @@
+[info] Loading project definition from /home/lazy/Documents/bht/project
+[info] Compiling 1 Scala source to /home/lazy/Documents/bht/project/target/scala-2.10/sbt-0.13/classes...
+[error] /home/lazy/Documents/bht/project/Build.scala:35: No implicit for Append.Values[Seq[sbt.ModuleID], Seq[Object]] found,
+[error]   so Seq[Object] cannot be appended to Seq[sbt.ModuleID]
+[error]       libraryDependencies ++= Seq(
+[error]                           ^
+[error] one error found
+[error] (compile:compileIncremental) Compilation failed
+Project loading failed: (r)etry, (q)uit, (l)ast, or (i)gnore? 
